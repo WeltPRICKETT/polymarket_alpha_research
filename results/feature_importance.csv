@@ -1,0 +1,12 @@
+feature,mean_abs_shap
+total_roi,1.0973274
+profit_loss_ratio,0.14182314
+win_rate,0.098972775
+cross_market_diversification,0.024155336
+capital_flow_centrality,0.02095769
+avg_holding_period,0.013760989
+trading_frequency,0.012885359
+early_entry_score,0.0040842616
+contrarian_score,0.0032352956
+information_ratio,0.0006865801
+max_drawdown,0.0

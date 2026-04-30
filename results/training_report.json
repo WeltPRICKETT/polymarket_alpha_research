@@ -1,0 +1,82 @@
+{
+  "timestamp": "2026-04-14T11:20:02.872244",
+  "data_path": "/Users/mac/project 2/poly/polymarket_alpha_research/data/features/model_input.csv",
+  "train_samples": 20601,
+  "test_samples": 192,
+  "features": [
+    "total_roi",
+    "max_drawdown",
+    "win_rate",
+    "profit_loss_ratio",
+    "early_entry_score",
+    "contrarian_score",
+    "information_ratio",
+    "cross_market_diversification",
+    "avg_holding_period",
+    "trading_frequency",
+    "capital_flow_centrality"
+  ],
+  "models": {
+    "Logistic Regression": {
+      "accuracy": 1.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "auc_roc": 0.5,
+      "avg_precision": 0.0,
+      "log_loss": 2.2204460492503136e-16,
+      "brier_score": 0.0,
+      "cv_auc": 0.9853679735963145,
+      "best_params": {
+        "lr__C": 100.0,
+        "lr__penalty": "l2",
+        "lr__solver": "lbfgs"
+      },
+      "train_time_sec": 2.63,
+      "train_auc": 0.98325981528158,
+      "val_auc": 0.9898576996283877,
+      "overfit_warning_val": false,
+      "overfit_warning_test": true
+    },
+    "Random Forest": {
+      "accuracy": 1.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "auc_roc": 0.5,
+      "avg_precision": 0.0,
+      "log_loss": 2.2204460492503136e-16,
+      "brier_score": 0.0,
+      "cv_auc": 0.999770779296915,
+      "best_params": {
+        "n_estimators": 300,
+        "min_samples_split": 10,
+        "min_samples_leaf": 2,
+        "max_features": "log2",
+        "max_depth": null
+      },
+      "train_time_sec": 75.19,
+      "train_auc": 0.9999988014055965,
+      "val_auc": 0.9810568295114657,
+      "overfit_warning_val": false,
+      "overfit_warning_test": true
+    },
+    "Gaussian NB": {
+      "accuracy": 1.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "auc_roc": 0.5,
+      "avg_precision": 0.0,
+      "log_loss": 0.0009115381697726786,
+      "brier_score": 8.30144838789506e-07,
+      "cv_auc": 0.0,
+      "best_params": {},
+      "train_time_sec": 0.03,
+      "train_auc": 0.9262462513160966,
+      "val_auc": 0.9611075863319133,
+      "overfit_warning_val": false,
+      "overfit_warning_test": true
+    }
+  }
+}

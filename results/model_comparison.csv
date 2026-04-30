@@ -1,0 +1,4 @@
+Model,Accuracy,Precision,Recall,F1-Score,AUC-ROC,Avg Precision,Log Loss,Brier Score,CV AUC (5-fold),Train Time (s)
+Logistic Regression,1.0,0.0,0.0,0.0,0.5,0.0,0.0,0.0,0.9854,2.63
+Random Forest,1.0,0.0,0.0,0.0,0.5,0.0,0.0,0.0,0.9998,75.19
+Gaussian NB,1.0,0.0,0.0,0.0,0.5,0.0,0.0009,0.0,0.0,0.03

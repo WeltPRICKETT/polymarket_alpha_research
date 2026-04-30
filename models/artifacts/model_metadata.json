@@ -1,0 +1,19 @@
+{
+  "model_name": "Logistic Regression",
+  "auc_roc": 0.5,
+  "accuracy": 1.0,
+  "f1": 0.0,
+  "feature_columns": [
+    "total_roi",
+    "max_drawdown",
+    "win_rate",
+    "profit_loss_ratio",
+    "early_entry_score",
+    "contrarian_score",
+    "information_ratio",
+    "cross_market_diversification",
+    "avg_holding_period",
+    "trading_frequency",
+    "capital_flow_centrality"
+  ]
+}
