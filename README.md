@@ -53,13 +53,13 @@ polymarket_alpha_research/
 - **Platform**: Polymarket (https://polymarket.com)
 - **Blockchain**: Polygon (MATIC)
 - **APIs**: Polymarket Data API + Gamma API (public endpoints, no auth required)
-- **Collection Period**: March - April 2025
-- **Time Coverage**: Historical trades from platform inception through April 2025
+- **Collection Period**: March - April 2026
+- **Time Coverage**: March 18, 2026 through April 30, 2026 (approximately 6 weeks)
 
 ### Dataset Statistics
 | Metric | Value |
 |--------|-------|
-| Total Transactions | ~700,000 |
+| Total Transactions | ~1,460,000 |
 | Unique Wallets | ~19,000 |
 | Unique Markets | 800+ |
 | Resolved Markets | ~500 |

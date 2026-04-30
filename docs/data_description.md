@@ -10,14 +10,14 @@
 | **Blockchain** | Polygon (MATIC) |
 | **Collection Method** | REST API polling with rate limiting |
 | **Authentication** | None required (public endpoints) |
-| **Collection Date** | March - April 2025 |
-| **Time Period Covered** | Historical trades from platform inception through April 2025 |
+| **Collection Date** | March - April 2026 |
+| **Time Period Covered** | March 18, 2026 through April 30, 2026 (approximately 6 weeks) |
 
 ## Dataset Overview
 
 | Metric | Value |
 |--------|-------|
-| **Total Observations** | ~700,000 transactions (full dataset) |
+| **Total Observations** | ~1,460,000 transactions (full dataset) |
 | **Unique Traders** | ~19,000 wallet addresses |
 | **Unique Markets** | 800+ prediction markets |
 | **Variables** | 8 core transaction fields + derived features |
