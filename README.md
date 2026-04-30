@@ -2,9 +2,7 @@
 
 **Research Question**: Can machine learning algorithms, trained on publicly available blockchain transaction data, accurately identify informed traders in decentralized prediction markets, and does a copy-trading strategy based on these AI-generated signals produce statistically significant excess returns?
 
-**Author**: Welt (Zicheng Peng)  
-**Course**: MGS 3001 - Empirical Analysis of AI Impact  
-**Institution**: NYU Shanghai
+**Author**: Welt 
 
 ---
 
