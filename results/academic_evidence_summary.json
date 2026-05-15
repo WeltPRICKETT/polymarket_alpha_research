@@ -1,0 +1,30 @@
+{
+  "status": "ok",
+  "generated_at": "2026-05-14T09:56:30.448204+00:00",
+  "evidence_row_count": 11,
+  "evidence_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/academic_evidence_table.csv",
+  "evidence_markdown": "/Users/mac/project 2/poly/polymarket_alpha_research/docs/audit/phase20_academic_evidence.md",
+  "label_strategy": {
+    "label_strategy": "future_return",
+    "label_independence": "independent_future_return",
+    "is_trainable_for_binary_eval": true
+  },
+  "random_baseline": {
+    "seed_count": 20,
+    "status": "ok"
+  },
+  "fold_matched_bootstrap": {
+    "status": "ok",
+    "bootstrap_samples": 1000,
+    "matched_rows": 15,
+    "matched_rank_count": 3
+  },
+  "academic_guardrails": [
+    "future_outcome_label",
+    "pre_resolution_live_features",
+    "rolling_origin_validation",
+    "execution_aware_backtest",
+    "multi_seed_random_baseline",
+    "fold_matched_bootstrap_intervals"
+  ]
+}

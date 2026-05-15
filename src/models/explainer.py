@@ -7,6 +7,7 @@ Description: SHAP 可解释性分析模块。
 """
 
 import sys
+import os
 import joblib
 import numpy as np
 import pandas as pd
@@ -15,6 +16,7 @@ from loguru import logger
 
 # Add project root to sys path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from src.models.feature_sets import get_feature_columns
 
 # Paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -22,15 +24,6 @@ DATA_DIR = PROJECT_ROOT / "data" / "features"
 MODEL_DIR = PROJECT_ROOT / "models" / "artifacts"
 RESULTS_DIR = PROJECT_ROOT / "results"
 PLOTS_DIR = RESULTS_DIR / "plots"
-
-# Same feature columns as trainer.py
-FEATURE_COLS = [
-    "total_roi", "max_drawdown", "win_rate", "profit_loss_ratio",
-    "early_entry_score", "contrarian_score", "information_ratio",
-    "cross_market_diversification", "avg_holding_period", "trading_frequency",
-    "capital_flow_centrality",
-]
-
 
 class ModelExplainer:
     """
@@ -41,6 +34,8 @@ class ModelExplainer:
         self.model = None
         self.X_test = None
         self.shap_values = None
+        self.feature_set = os.getenv("POLYMARKET_FEATURE_SET", "live")
+        self.feature_cols = get_feature_columns(self.feature_set)
 
     def load(self):
         """加载最佳模型和测试数据。"""
@@ -50,7 +45,7 @@ class ModelExplainer:
 
         df = pd.read_csv(DATA_DIR / "model_input.csv")
         test_df = df[df["is_train"] == False]
-        self.X_test = test_df[FEATURE_COLS]
+        self.X_test = test_df[self.feature_cols]
         logger.info(f"Loaded test data: {self.X_test.shape}")
 
     def compute_shap_values(self):
@@ -89,7 +84,7 @@ class ModelExplainer:
         shap.summary_plot(
             self.shap_values,
             self.X_test,
-            feature_names=FEATURE_COLS,
+            feature_names=self.feature_cols,
             show=False,
             plot_size=(10, 7),
         )
@@ -114,7 +109,7 @@ class ModelExplainer:
         shap.summary_plot(
             self.shap_values,
             self.X_test,
-            feature_names=FEATURE_COLS,
+            feature_names=self.feature_cols,
             plot_type="bar",
             show=False,
             plot_size=(10, 6),
@@ -133,7 +128,7 @@ class ModelExplainer:
 
         shap_abs_mean = np.abs(self.shap_values).mean(axis=0)
         importance_df = pd.DataFrame({
-            "feature": FEATURE_COLS,
+            "feature": self.feature_cols,
             "mean_abs_shap": shap_abs_mean,
         }).sort_values("mean_abs_shap", ascending=False)
 

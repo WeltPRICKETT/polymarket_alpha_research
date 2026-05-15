@@ -16,6 +16,9 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 VENV_PYTHON = BASE_DIR / "venv" / "bin" / "python"
+MPL_CACHE_DIR = BASE_DIR / ".cache" / "matplotlib"
+MPL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+os.environ.setdefault("MPLCONFIGDIR", str(MPL_CACHE_DIR))
 
 # ── Auto-relaunch with venv Python if not already using it ──────
 def _is_in_venv():

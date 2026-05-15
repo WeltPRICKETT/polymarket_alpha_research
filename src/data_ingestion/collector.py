@@ -14,6 +14,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from src.config.settings import LOG_LEVEL
 from src.data_ingestion.storage import Storage
 from src.data_ingestion.public_scraper import PublicScraper
+from src.data_quality.audit import write_audit_artifacts
 
 # Set up logging
 logger.remove()
@@ -46,6 +47,11 @@ def collect_data(mode: str = "full", max_trades: int = 5000):
         logger.info("⚠️  Partial success: 100+ trades, but less than 10,000.")
     else:
         logger.warning(f"❌ Only {len(df)} trades — check API connectivity.")
+
+    try:
+        write_audit_artifacts()
+    except Exception as e:
+        logger.warning(f"Data quality audit failed after collection: {e}")
 
     return len(df)
 

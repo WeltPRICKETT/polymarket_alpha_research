@@ -45,6 +45,38 @@ class Market(Base):
     resolved = Column(Boolean, default=False)
     resolution_outcome = Column(String, nullable=True)
 
+class CollectionRun(Base):
+    __tablename__ = 'collection_runs'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(String, unique=True, index=True)
+    mode = Column(String, index=True)
+    source = Column(String)
+    started_at = Column(DateTime)
+    finished_at = Column(DateTime, nullable=True)
+    status = Column(String, default="running")
+    max_trades = Column(Integer, nullable=True)
+    scanned_trades = Column(Integer, default=0)
+    new_trades = Column(Integer, default=0)
+    error_count = Column(Integer, default=0)
+    raw_pages = Column(Integer, default=0)
+    first_trade_timestamp = Column(DateTime, nullable=True)
+    last_trade_timestamp = Column(DateTime, nullable=True)
+    notes = Column(String, nullable=True)
+
+class RawApiPage(Base):
+    __tablename__ = 'raw_api_pages'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(String, index=True)
+    endpoint = Column(String)
+    params_json = Column(String)
+    status_code = Column(Integer)
+    response_sha256 = Column(String)
+    row_count = Column(Integer)
+    fetched_at = Column(DateTime)
+    raw_path = Column(String)
+
 class Storage:
     """Handles database connections and CRUD operations (optimized)."""
     
@@ -259,5 +291,108 @@ class Storage:
         session = self.Session()
         try:
             return session.query(func.count(func.distinct(Transaction.market_id))).scalar() or 0
+        finally:
+            session.close()
+
+    # ── Collection Provenance ───────────────────────────────────────────────
+
+    def start_collection_run(
+        self,
+        run_id: str,
+        mode: str,
+        source: str,
+        max_trades: Optional[int] = None,
+        notes: Optional[str] = None,
+    ) -> None:
+        session = self.Session()
+        try:
+            run = CollectionRun(
+                run_id=run_id,
+                mode=mode,
+                source=source,
+                max_trades=max_trades,
+                started_at=datetime.datetime.now(datetime.UTC),
+                status="running",
+                notes=notes,
+            )
+            session.merge(run)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Failed to start collection run {run_id}: {e}")
+        finally:
+            session.close()
+
+    def record_raw_api_page(
+        self,
+        run_id: str,
+        endpoint: str,
+        params_json: str,
+        status_code: int,
+        response_sha256: str,
+        row_count: int,
+        raw_path: str,
+    ) -> None:
+        session = self.Session()
+        try:
+            page = RawApiPage(
+                run_id=run_id,
+                endpoint=endpoint,
+                params_json=params_json,
+                status_code=status_code,
+                response_sha256=response_sha256,
+                row_count=row_count,
+                fetched_at=datetime.datetime.now(datetime.UTC),
+                raw_path=raw_path,
+            )
+            session.add(page)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Failed to record raw API page for run {run_id}: {e}")
+        finally:
+            session.close()
+
+    def finish_collection_run(
+        self,
+        run_id: str,
+        status: str,
+        scanned_trades: int = 0,
+        new_trades: int = 0,
+        error_count: int = 0,
+        raw_pages: int = 0,
+        first_trade_timestamp: Optional[str] = None,
+        last_trade_timestamp: Optional[str] = None,
+        notes: Optional[str] = None,
+    ) -> None:
+        session = self.Session()
+        try:
+            run = session.query(CollectionRun).filter(CollectionRun.run_id == run_id).one_or_none()
+            if run is None:
+                return
+
+            def parse_ts(value):
+                if not value:
+                    return None
+                if isinstance(value, datetime.datetime):
+                    return value.replace(tzinfo=None)
+                try:
+                    return datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00")).replace(tzinfo=None)
+                except ValueError:
+                    return None
+
+            run.finished_at = datetime.datetime.now(datetime.UTC)
+            run.status = status
+            run.scanned_trades = scanned_trades
+            run.new_trades = new_trades
+            run.error_count = error_count
+            run.raw_pages = raw_pages
+            run.first_trade_timestamp = parse_ts(first_trade_timestamp)
+            run.last_trade_timestamp = parse_ts(last_trade_timestamp)
+            run.notes = notes or run.notes
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Failed to finish collection run {run_id}: {e}")
         finally:
             session.close()

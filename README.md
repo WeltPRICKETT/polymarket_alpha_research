@@ -1,5 +1,9 @@
 # Polymarket Alpha Research
 
+> **AI handoff note**: if you are taking over this project in a new agent or IDE
+> session, read `AI_HANDOFF.md` first. It records the current Phase 0-24 status,
+> validation commands, known dataset gaps, and recommended next workflow.
+
 **Research Question**: Can machine learning algorithms, trained on publicly available blockchain transaction data, accurately identify informed traders in decentralized prediction markets, and does a copy-trading strategy based on these AI-generated signals produce statistically significant excess returns?
 
 **Author**: Welt 
@@ -11,9 +15,12 @@
 This project conducts an end-to-end empirical analysis of informed trader identification in decentralized prediction markets. Using transaction-level data from Polymarket (the world's largest blockchain prediction market), we develop machine learning models to classify traders based on their behavioral patterns and validate the economic value of AI-generated signals through event studies and backtesting.
 
 **Key Findings**:
-- **96.9% Precision** in identifying informed traders (AUC-ROC: 0.9996)
-- **68.64 Sharpe Ratio** for copy-trading strategy with 5-minute delay
-- **89.2% Win Rate** demonstrates significant alpha from behavioral signals
+- **XGBoost AUC-ROC: 0.593** — modest but statistically above random (0.500) for future-return prediction
+- **Top-10% selection achieves 1.24x precision lift** over base rate, confirming a real ranking signal
+- **60 automated tests, 10 data quality gates** ensure full reproducibility
+- **Contribution is methodological**: rigorous pipeline design, CLOB-verified resolutions, temporal walk-forward validation, and honest reporting of results
+
+See [`docs/model_interpretation.md`](docs/model_interpretation.md) for detailed analysis of model performance and threshold strategies.
 
 ---
 
@@ -53,17 +60,19 @@ polymarket_alpha_research/
 - **Platform**: Polymarket (https://polymarket.com)
 - **Blockchain**: Polygon (MATIC)
 - **APIs**: Polymarket Data API + Gamma API (public endpoints, no auth required)
-- **Collection Period**: March - April 2026
-- **Time Coverage**: March 18, 2026 through April 30, 2026 (approximately 6 weeks)
+- **Collection Period**: March – May 2026
+- **Time Coverage**: March 18, 2026 through May 15, 2026 (approximately 8 weeks)
 
 ### Dataset Statistics
 | Metric | Value |
 |--------|-------|
-| Total Transactions | ~1,460,000 |
-| Unique Wallets | ~19,000 |
-| Unique Markets | 800+ |
-| Resolved Markets | ~500 |
-| Data Size | ~700 MB (SQLite) |
+| Total Transactions | 1,706,505 |
+| Unique Wallets | 203,300 |
+| Unique Markets | 96,884 |
+| Resolved (Closed) Markets | 89,597 |
+| Resolution Coverage | 99.8% (CLOB API verified) |
+| Data Size | ~834 MB (SQLite) |
+| Collection Period | March 18 – May 15, 2026 |
 
 ### Sample Data
 The file `data/polymarket_sample.csv` contains 1,000 representative transactions. The full dataset exceeds GitHub's file size limit (>100MB) and is not committed to the repository.
@@ -127,34 +136,54 @@ Running the full collection produces:
 
 ---
 
-## Reproducibility Notes
+## Reproducibility
+
+A single command verifies all audit gates, regenerates reports, and runs the full test suite:
+
+```bash
+bash scripts/reproduce.sh
+```
+
+For details on the verification pipeline, evidence artifacts, and phase-by-phase audit trail, see [`docs/reproducibility.md`](docs/reproducibility.md).
 
 ### No Authentication Required
-The Polymarket Data API and Gamma API are public endpoints. No API keys, authentication tokens, or special access permissions are needed for data collection.
+The Polymarket Data API and CLOB API are public endpoints. No API keys, authentication tokens, or special access permissions are needed for data collection.
 
-### Rate Limiting
-The scraper implements polite rate limiting (0.25s delay between requests) to avoid overloading the API. If you encounter rate limit errors, increase `RATE_LIMIT_DELAY`.
+### Resolution Methodology
+Market outcomes are determined exclusively via the CLOB API (`clob.polymarket.com/markets/{conditionId}`), which provides an explicit `winner` boolean per token. The Gamma API conditionId filter is known to be unreliable (see `AI_HANDOFF.md` for details).
 
 ### Data Completeness
-- Markets resolve to definitive outcomes (Yes/No or specific outcomes)
-- ~60% of collected markets were resolved at collection time
-- Open markets are filtered out for ground truth labeling but included in real-time features
+- 99.8% of markets successfully resolved via CLOB API
+- 89,597 closed markets with verified outcomes
+- Diverse outcome types: Yes, No, Up, Down, team names, Over/Under, etc.
+- Open markets (7,495) tracked but excluded from resolution-dependent labels
 
 ---
 
 ## Project Pipeline
 
 ```
-Layer 0: Data Collection
+Layer 0: Data Collection (Polymarket Data API + CLOB API)
     ↓
-Layer 1: Labeling (Ground Truth)
+Layer 1: Resolution & Labeling (CLOB-verified outcomes → future-return labels)
     ↓
-Layer 2: Feature Engineering + ML Training
+Layer 2: Feature Engineering + ML Training (temporal walk-forward split)
     ↓
-Layer 3: Event Study + Backtesting
+Layer 3: Event Study + Backtesting (random baselines, bootstrap CI)
 ```
 
-See `src/` directory for implementation of each layer.
+### ML Pipeline Summary
+| Stage | Detail |
+|-------|--------|
+| Primary label | Future-return (independent, forward-looking ROI) |
+| Robustness check | Resolution-based accuracy label |
+| Split method | Temporal walk-forward (70/15/15) |
+| Train wallets | 13,654 |
+| Val wallets | 1,119 |
+| Test wallets | 1,026 |
+| Positive rate | ~20% (balanced) |
+
+See `src/` directory for implementation and `docs/` for detailed documentation.
 
 ---
 

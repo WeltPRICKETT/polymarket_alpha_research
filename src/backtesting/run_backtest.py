@@ -1,103 +1,105 @@
 """
 Author: AI Assistant
-Date: 2026-03-18
-Description: Orchestrator script to run the backtest and print results.
+Date: 2026-05-12
+Description: Backtest CLI entrypoint using the current StrategyBacktester engine.
 """
 
+import argparse
 import sys
 from pathlib import Path
-import pandas as pd
+
 from loguru import logger
 
-# Add project root to sys path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from src.backtesting.engine import BacktestEngine
-from src.backtesting.strategies import ShadowWhaleStrategy, RandomBaselineStrategy
-from src.backtesting.metrics import calculate_metrics
+from src.config.settings import LOG_LEVEL
+from src.backtesting.engine import StrategyBacktester
+from src.backtesting.walk_forward import run_walk_forward
 
-def main():
-    logger.info("Starting Phase 4: Strategy Backtesting")
-    BASE_DIR = Path(__file__).resolve().parent.parent.parent
-    
-    # 1. Load Data
-    trades_path = BASE_DIR / "data" / "processed" / "real_trades_enriched.csv"
-    resolutions_path = BASE_DIR / "data" / "processed" / "market_resolutions.csv"
-    informed_path = BASE_DIR / "results" / "informed_traders.csv"
-    
-    if not all(p.exists() for p in [trades_path, resolutions_path, informed_path]):
-        logger.error("Missing required data files. Please run earlier pipeline steps.")
-        return
-        
-    trades_df = pd.read_csv(trades_path)
-    if 'timestamp' in trades_df.columns:
-        trades_df['timestamp'] = pd.to_datetime(trades_df['timestamp'], errors='coerce')
-    trades_df = trades_df.dropna(subset=['timestamp']).sort_values('timestamp')
-    
-    resolutions_df = pd.read_csv(resolutions_path)
-    informed_df = pd.read_csv(informed_path)
-    
-    # Extract only the addresses classified as informed (predicted_label == 1.0)
-    # If the file includes top 10% directly, we might just use them all.
-    # Let's use any address that is in informed_df and actually labeled informed
-    if 'predicted_label' in informed_df.columns:
-        target_wallets = informed_df[informed_df['predicted_label'] == 1.0]['address'].tolist()
-    else:
-        target_wallets = informed_df['address'].tolist()
-        
-    logger.info(f"Loaded {len(target_wallets)} target Whale addresses to shadow.")
-    
-    # 2. Setup Backtest Environment Variables
-    initial_cap = 10000.0
-    out_dir = BASE_DIR / "results" / "backtest"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    
-    # ==============================================================
-    # RUN 1: Shadow Whale Strategy
-    # ==============================================================
-    engine_whale = BacktestEngine(initial_capital=initial_cap)
-    strategy_whale = ShadowWhaleStrategy(
-        informed_addresses=target_wallets, 
-        max_position_size=1000.0, 
-        copy_fraction=0.1
+
+def main(
+    latency_minutes: int = 5,
+    trade_size: float = 100.0,
+    fees_pct: float = 0.001,
+    max_trade_fraction_of_balance: float = 0.02,
+    max_market_exposure_fraction: float = 0.10,
+    liquidity_lookback_minutes: int = 60,
+    max_participation_rate: float = 0.10,
+    min_fill_notional: float = 1.0,
+    price_impact_bps: float = 10.0,
+):
+    """Run the copy-trading backtest and write standard result artifacts."""
+    logger.remove()
+    logger.add(sys.stdout, level=LOG_LEVEL)
+
+    logger.info("=" * 60)
+    logger.info("PHASE 6: STRATEGY BACKTEST")
+    logger.info("=" * 60)
+
+    backtester = StrategyBacktester(
+        latency_minutes=latency_minutes,
+        trade_size=trade_size,
+        fees_pct=fees_pct,
+        max_trade_fraction_of_balance=max_trade_fraction_of_balance,
+        max_market_exposure_fraction=max_market_exposure_fraction,
+        liquidity_lookback_minutes=liquidity_lookback_minutes,
+        max_participation_rate=max_participation_rate,
+        min_fill_notional=min_fill_notional,
+        price_impact_bps=price_impact_bps,
     )
-    
-    eq_whale, hist_whale = engine_whale.run(trades_df, resolutions_df, strategy_whale)
-    metrics_whale = calculate_metrics(eq_whale, initial_cap)
-    
-    eq_whale.to_csv(out_dir / "whale_equity.csv", index=False)
-    hist_whale.to_csv(out_dir / "whale_trades.csv", index=False)
-    
-    # ==============================================================
-    # RUN 2: Random Baseline Strategy
-    # ==============================================================
-    engine_random = BacktestEngine(initial_capital=initial_cap)
-    strategy_random = RandomBaselineStrategy(trade_probability=0.03, fixed_trade_size=50.0)
-    
-    eq_random, hist_random = engine_random.run(trades_df, resolutions_df, strategy_random)
-    metrics_random = calculate_metrics(eq_random, initial_cap)
-    
-    # ==============================================================
-    # Summary Report
-    # ==============================================================
-    logger.info("==============================================================")
-    logger.info("🎯 BACKTEST PERFORMANCE REPORT")
-    logger.info("==============================================================")
-    
-    logger.info(f"[WHALE SHADOWING STRATEGY]")
-    for k, v in metrics_whale.items():
-        logger.info(f"  {k}: {v:,.2f}")
-    logger.info(f"  Total Trades Executed: {len(hist_whale[hist_whale['action']=='BUY']) if not hist_whale.empty else 0}")
-        
-    logger.info("-" * 40)
-    logger.info(f"[RANDOM BASELINE STRATEGY]")
-    for k, v in metrics_random.items():
-        logger.info(f"  {k}: {v:,.2f}")
-    logger.info(f"  Total Trades Executed: {len(hist_random[hist_random['action']=='BUY']) if not hist_random.empty else 0}")
-        
-    logger.info("==============================================================")
-    logger.info(f"Alpha Captured (Returns Diff): {(metrics_whale.get('Total Return (%)', 0) - metrics_random.get('Total Return (%)', 0)):.2f}%")
-    logger.info(f"Check /results/backtest/ for full equity curves and trade ledgers.")
+    backtester.load_data()
+    metrics = backtester.simulate()
+
+    if metrics is None:
+        raise RuntimeError("Backtest finished without valid trades. Check informed traders and resolved markets.")
+
+    logger.info("=" * 60)
+    logger.info("BACKTEST COMPLETE")
+    logger.info("Outputs: results/backtest_trades.csv, results/backtest_metrics.json")
+    if metrics.get("status") != "no_valid_trades":
+        logger.info("Plot: results/plots/backtest_equity.png")
+    logger.info("=" * 60)
+    return metrics
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run Polymarket copy-trading backtest")
+    parser.add_argument("--latency-minutes", type=int, default=5)
+    parser.add_argument("--trade-size", type=float, default=100.0)
+    parser.add_argument("--fees-pct", type=float, default=0.001)
+    parser.add_argument("--max-trade-fraction-of-balance", type=float, default=0.02)
+    parser.add_argument("--max-market-exposure-fraction", type=float, default=0.10)
+    parser.add_argument("--liquidity-lookback-minutes", type=int, default=60)
+    parser.add_argument("--max-participation-rate", type=float, default=0.10)
+    parser.add_argument("--min-fill-notional", type=float, default=1.0)
+    parser.add_argument("--price-impact-bps", type=float, default=10.0)
+    parser.add_argument("--walk-forward", action="store_true", help="Run walk-forward backtest with baselines")
+    parser.add_argument("--folds", type=int, default=3, help="Number of walk-forward folds")
+    parser.add_argument("--max-targets", type=int, default=50, help="Max target wallets per fold")
+    args = parser.parse_args()
+    if args.walk_forward:
+        run_walk_forward(
+            n_folds=args.folds,
+            max_targets=args.max_targets,
+            latency_minutes=args.latency_minutes,
+            trade_size=args.trade_size,
+            fees_pct=args.fees_pct,
+            max_trade_fraction_of_balance=args.max_trade_fraction_of_balance,
+            max_market_exposure_fraction=args.max_market_exposure_fraction,
+            liquidity_lookback_minutes=args.liquidity_lookback_minutes,
+            max_participation_rate=args.max_participation_rate,
+            min_fill_notional=args.min_fill_notional,
+            price_impact_bps=args.price_impact_bps,
+        )
+    else:
+        main(
+            latency_minutes=args.latency_minutes,
+            trade_size=args.trade_size,
+            fees_pct=args.fees_pct,
+            max_trade_fraction_of_balance=args.max_trade_fraction_of_balance,
+            max_market_exposure_fraction=args.max_market_exposure_fraction,
+            liquidity_lookback_minutes=args.liquidity_lookback_minutes,
+            max_participation_rate=args.max_participation_rate,
+            min_fill_notional=args.min_fill_notional,
+            price_impact_bps=args.price_impact_bps,
+        )

@@ -1,0 +1,251 @@
+{
+  "status": "ok",
+  "generated_at": "2026-05-15T11:53:13.149289+00:00",
+  "database": {
+    "path": "data/research.db",
+    "exists": true,
+    "tables": [
+      "collection_runs",
+      "markets",
+      "positions",
+      "raw_api_pages",
+      "transactions"
+    ],
+    "transactions": {
+      "rows": 1730663,
+      "unique_transaction_ids": 1730663,
+      "unique_wallets": 205289,
+      "unique_markets": 98120,
+      "min_timestamp": "2026-03-18 00:57:21.000000",
+      "max_timestamp": "2026-05-15 11:34:40.000000",
+      "missing_outcome_count": 3,
+      "outcome_non_missing_rate": 0.999998266560272,
+      "missing_market_id_count": 5,
+      "invalid_price_count": 1
+    },
+    "collection_runs": {
+      "rows": 17,
+      "latest_started_at": "2026-05-15 11:36:05.018380",
+      "total_new_trades": 40754,
+      "total_errors": 45
+    },
+    "raw_api_pages": {
+      "rows": 7265,
+      "run_count": 16,
+      "total_payload_rows": 53696
+    }
+  },
+  "raw_layer": {
+    "json_file_count": 7275,
+    "api_page_file_count": 7265
+  },
+  "processed_layers": {
+    "real_trades_enriched": {
+      "path": "data/processed/real_trades_enriched.csv",
+      "exists": true,
+      "rows": 1730663,
+      "columns": [
+        "transaction_id",
+        "address",
+        "market_id",
+        "side",
+        "amount",
+        "price",
+        "timestamp",
+        "_outcome",
+        "_title",
+        "_slug",
+        "_event_slug",
+        "market_resolution"
+      ],
+      "unique_transaction_ids": 1730663,
+      "unique_wallets": 205289,
+      "unique_markets": 98119,
+      "min_timestamp": "2026-03-18 00:57:21+00:00",
+      "max_timestamp": "2026-05-15 11:34:40+00:00",
+      "bad_timestamp_count": 0,
+      "_outcome_missing": 3,
+      "_outcome_non_missing_rate": 0.999998266560272,
+      "_outcome_top_values": {
+        "Up": 563046,
+        "Down": 547998,
+        "No": 223843,
+        "Yes": 179556,
+        "Under": 17613,
+        "Over": 17355,
+        "Lakers": 2658,
+        "Spurs": 2004,
+        "Pistons": 1923,
+        "Timberwolves": 1885
+      },
+      "market_resolution_missing": 16981,
+      "market_resolution_non_missing_rate": 0.9901881533262108,
+      "market_resolution_top_values": {
+        "__OPEN__": 996214,
+        "Yes": 711988,
+        "nan": 16981,
+        "Down": 3490,
+        "Up": 1990
+      }
+    },
+    "cleaned_transactions": {
+      "path": "data/processed/cleaned_transactions.csv",
+      "exists": true,
+      "rows": 1310539,
+      "columns": [
+        "id",
+        "transaction_id",
+        "address",
+        "market_id",
+        "side",
+        "amount",
+        "price",
+        "timestamp",
+        "outcome",
+        "volume"
+      ],
+      "unique_transaction_ids": 1310539,
+      "unique_wallets": 42526,
+      "unique_markets": 85364,
+      "min_timestamp": "2026-03-18 00:57:21+00:00",
+      "max_timestamp": "2026-05-15 05:22:25+00:00",
+      "bad_timestamp_count": 0,
+      "outcome_missing": 1,
+      "outcome_non_missing_rate": 0.9999992369551765,
+      "outcome_top_values": {
+        "Up": 449241,
+        "Down": 440552,
+        "No": 148274,
+        "Yes": 111715,
+        "Under": 13908,
+        "Over": 12732,
+        "Lakers": 1698,
+        "Spurs": 1391,
+        "Timberwolves": 1349,
+        "Pistons": 1291
+      }
+    },
+    "market_resolutions": {
+      "path": "data/processed/market_resolutions.csv",
+      "exists": true,
+      "rows": 98023,
+      "columns": [
+        "market_id",
+        "question",
+        "resolution",
+        "closed",
+        "winning_outcome",
+        "winning_outcome_index",
+        "winning_outcome_price",
+        "outcomes_json",
+        "outcome_prices_json",
+        "slug",
+        "resolution_method",
+        "resolved_at"
+      ],
+      "unique_markets": 98022,
+      "resolution_missing": 0,
+      "resolution_non_missing_rate": 1.0,
+      "resolution_top_values": {
+        "No": 32109,
+        "Down": 12433,
+        "Up": 12421,
+        "Yes": 9219,
+        "__OPEN__": 8704,
+        "Under": 4362,
+        "Over": 4087,
+        "Under 2.5": 119,
+        "Even": 115,
+        "Odd": 102
+      }
+    }
+  },
+  "feature_layer": {
+    "model_input": {
+      "path": "data/features/model_input.csv",
+      "exists": true,
+      "rows": 15799,
+      "columns": [
+        "address",
+        "total_roi",
+        "max_drawdown",
+        "win_rate",
+        "profit_loss_ratio",
+        "early_entry_score",
+        "contrarian_score",
+        "information_ratio",
+        "cross_market_diversification",
+        "avg_holding_period",
+        "trading_frequency",
+        "capital_flow_centrality",
+        "Risk_Adjusted_Return",
+        "first_trade_date",
+        "split",
+        "is_train",
+        "feature_cutoff",
+        "label_window_end",
+        "label_window_complete",
+        "future_n_resolved_trades",
+        "future_n_correct",
+        "future_accuracy",
+        "future_invested",
+        "future_net_profit",
+        "future_roi",
+        "Trader_Success_Rate",
+        "label_source",
+        "future_return_threshold",
+        "future_label_config"
+      ],
+      "unique_wallets": 15799,
+      "split_counts": {
+        "train": 13654,
+        "val": 1119,
+        "test": 1026
+      },
+      "label_counts": {
+        "0": 12617,
+        "1": 3182
+      }
+    }
+  },
+  "dataset_funnel": {
+    "db_transactions": 1730663,
+    "enriched_transactions": 1730663,
+    "cleaned_transactions": 1310539,
+    "feature_wallets": 15799,
+    "cleaned_retention_vs_db": 0.7572467892362638,
+    "feature_wallets_vs_db_wallets": 0.07695979813823439
+  },
+  "resolution_coverage": {
+    "unique_resolved": 98022,
+    "db_unique_markets": 98120,
+    "coverage_ratio": 0.9990012229922544,
+    "total_rows": 98023,
+    "closed_count": 89681,
+    "no_winner_count": 32109,
+    "yes_winner_count": 9219,
+    "method_distribution": {
+      "clob_winner_field": 89269,
+      "clob_no_winner": 8704,
+      "fetch_failed": 50
+    },
+    "closed_clob_ratio": 0.9954059388276224,
+    "closed_legacy_count": 0,
+    "closed_gamma_argmax_count": 0,
+    "fetch_failed_count": 50,
+    "fetch_failed_ratio": 0.0005100843679544597
+  },
+  "phase21_24_gates": {
+    "collection_provenance_tables_exist": true,
+    "raw_api_page_archive_enabled": true,
+    "db_outcome_preserved": true,
+    "cleaned_outcome_preserved": true,
+    "resolution_schema_extended": true,
+    "resolution_coverage_ge_99pct": true,
+    "resolution_no_legacy_in_closed": true,
+    "resolution_fetch_failed_lt_1pct": true,
+    "resolution_clob_dominates_closed": true,
+    "completeness_report_generated": true
+  },
+  "known_gaps": []
+}

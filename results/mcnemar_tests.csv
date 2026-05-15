@@ -1,4 +1,22 @@
 Model A,Model B,A_correct_B_wrong,A_wrong_B_correct,Chi2,p_value,Significance
-Logistic Regression,Random Forest,0,0,0.0,1.0,ns
+Baseline: Majority Class,Baseline: Stratified Random,157,52,51.7512,0.0,***
+Baseline: Majority Class,Logistic Regression,0,0,0.0,1.0,ns
+Baseline: Majority Class,Random Forest,8,9,0.0,1.0,ns
+Baseline: Majority Class,XGBoost,0,0,0.0,1.0,ns
+Baseline: Majority Class,Gaussian NB,0,0,0.0,1.0,ns
+Baseline: Majority Class,LightGBM,0,0,0.0,1.0,ns
+Baseline: Stratified Random,Logistic Regression,52,157,51.7512,0.0,***
+Baseline: Stratified Random,Random Forest,57,163,50.1136,0.0,***
+Baseline: Stratified Random,XGBoost,52,157,51.7512,0.0,***
+Baseline: Stratified Random,Gaussian NB,52,157,51.7512,0.0,***
+Baseline: Stratified Random,LightGBM,52,157,51.7512,0.0,***
+Logistic Regression,Random Forest,8,9,0.0,1.0,ns
+Logistic Regression,XGBoost,0,0,0.0,1.0,ns
 Logistic Regression,Gaussian NB,0,0,0.0,1.0,ns
-Random Forest,Gaussian NB,0,0,0.0,1.0,ns
+Logistic Regression,LightGBM,0,0,0.0,1.0,ns
+Random Forest,XGBoost,9,8,0.0,1.0,ns
+Random Forest,Gaussian NB,9,8,0.0,1.0,ns
+Random Forest,LightGBM,9,8,0.0,1.0,ns
+XGBoost,Gaussian NB,0,0,0.0,1.0,ns
+XGBoost,LightGBM,0,0,0.0,1.0,ns
+Gaussian NB,LightGBM,0,0,0.0,1.0,ns

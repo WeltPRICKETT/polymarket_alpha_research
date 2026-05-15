@@ -6,7 +6,6 @@ Description: Enhanced FastAPI backend with rich data APIs and static frontend ho
 
 import os
 import json
-import subprocess
 import threading
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -178,6 +177,9 @@ def get_comparison_data():
 _ml_state = {"running": False, "status": "idle", "message": "", "progress": 0}
 _ml_lock = threading.Lock()
 _ml_results = {}  # Cached latest results
+_backtest_state = {"running": False, "status": "idle", "message": "", "progress": 0}
+_backtest_lock = threading.Lock()
+_backtest_results = {}
 
 def _run_ml_background():
     """Background task for ML training."""
@@ -320,24 +322,136 @@ def get_pipeline_status():
     with _pipeline_lock:
         return _pipeline_state.copy()
 
-# ── Backtest Trigger (legacy) ──────────────────────────────────────────────
+# ── Backtest Trigger ───────────────────────────────────────────────────────
+
+def _run_backtest_background(walk_forward: bool = False):
+    """Background task for the current backtesting engine."""
+    global _backtest_state, _backtest_results
+    with _backtest_lock:
+        _backtest_state = {"running": True, "status": "backtesting", "message": "Loading backtest inputs", "progress": 10}
+    try:
+        import sys
+        sys.path.insert(0, str(BASE_DIR))
+        from src.backtesting.run_backtest import main as run_backtest
+        from src.backtesting.walk_forward import run_walk_forward
+
+        with _backtest_lock:
+            _backtest_state["message"] = "Running walk-forward backtest" if walk_forward else "Simulating copy-trading strategy"
+            _backtest_state["progress"] = 35
+
+        metrics = run_walk_forward() if walk_forward else run_backtest()
+
+        with _backtest_lock:
+            _backtest_results = metrics or {}
+            _backtest_state = {"running": False, "status": "done", "message": "Backtest complete", "progress": 100}
+    except Exception as e:
+        with _backtest_lock:
+            _backtest_state = {"running": False, "status": "error", "message": str(e), "progress": 0}
+        logger.error(f"Backtest failed: {e}")
 
 @app.post("/api/run-backtest")
-async def trigger_backtest(background_tasks: BackgroundTasks, model: str = "xgboost"):
-    """Trigger backtest pipeline."""
-    venv_python = BASE_DIR / "venv" / "bin" / "python"
-    backtest_script = str(BASE_DIR / "src" / "backtesting" / "run_backtest.py")
-    viz_script = str(BASE_DIR / "src" / "visualization" / "dashboard.py")
+async def trigger_backtest(background_tasks: BackgroundTasks, model: str = "xgboost", walk_forward: bool = False):
+    """Trigger backtest pipeline in the background."""
+    with _backtest_lock:
+        if _backtest_state["running"]:
+            raise HTTPException(409, "A backtest is already running")
+    with _pipeline_lock:
+        if _pipeline_state["running"]:
+            raise HTTPException(409, "A data pipeline is running, wait for it to finish")
+    background_tasks.add_task(_run_backtest_background, walk_forward)
+    mode = "walk-forward backtest" if walk_forward else "backtest"
+    return {"message": f"{mode} pipeline for {model} triggered."}
 
-    def run_script(script_path):
+@app.get("/api/backtest/status")
+def get_backtest_status():
+    """Get current backtest execution status."""
+    with _backtest_lock:
+        return _backtest_state.copy()
+
+@app.get("/api/backtest/results")
+def get_backtest_results():
+    """Get latest backtest metrics from memory or result artifact."""
+    metrics_path = BASE_DIR / "results" / "backtest_metrics.json"
+    if metrics_path.exists():
         try:
-            subprocess.run([str(venv_python), script_path], capture_output=True, text=True, check=True)
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Script failed: {script_path}\nError: {e.stderr}")
+            with open(metrics_path) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    with _backtest_lock:
+        if _backtest_results:
+            return _backtest_results
+    return {"message": "No backtest results available. Run a backtest first."}
 
-    background_tasks.add_task(run_script, backtest_script)
-    background_tasks.add_task(run_script, viz_script)
-    return {"message": f"Backtest pipeline for {model} triggered."}
+@app.get("/api/backtest/walk-forward")
+def get_walk_forward_results():
+    """Get latest walk-forward summary."""
+    summary_path = BASE_DIR / "results" / "walk_forward_summary.json"
+    if summary_path.exists():
+        try:
+            with open(summary_path) as f:
+                return json.load(f)
+        except Exception as e:
+            raise HTTPException(500, str(e))
+    return {"message": "No walk-forward results available. Run with walk_forward=true first."}
+
+# ── Collection Health API ─────────────────────────────────────────────────
+
+COMPLETENESS_PATH = BASE_DIR / "results" / "dataset_completeness_report.json"
+LABEL_SUMMARY_PATH = BASE_DIR / "results" / "label_summary.json"
+MODEL_META_PATH = BASE_DIR / "models" / "artifacts" / "model_metadata.json"
+
+@app.get("/api/collection-health")
+def get_collection_health():
+    """Data quality overview: resolution coverage, label strategy, model status."""
+    result = {}
+
+    # Resolution coverage
+    if COMPLETENESS_PATH.exists():
+        try:
+            with open(COMPLETENESS_PATH) as f:
+                report = json.load(f)
+            rc = report.get("resolution_coverage", {})
+            result["resolution"] = {
+                "coverage_ratio": rc.get("coverage_ratio"),
+                "closed_markets": rc.get("closed_count"),
+                "method_distribution": rc.get("method_distribution"),
+                "fetch_failed": rc.get("fetch_failed_count"),
+                "fetch_failed_ratio": rc.get("fetch_failed_ratio"),
+            }
+            result["gates"] = report.get("phase21_24_gates", {})
+            result["known_gaps"] = report.get("known_gaps", [])
+            result["generated_at"] = report.get("generated_at")
+        except Exception as e:
+            result["resolution_error"] = str(e)
+
+    # Label strategy
+    if LABEL_SUMMARY_PATH.exists():
+        try:
+            with open(LABEL_SUMMARY_PATH) as f:
+                labels = json.load(f)
+            result["labels"] = {
+                "strategy": labels.get("label_strategy"),
+                "independence": labels.get("label_independence"),
+                "row_count": labels.get("row_count"),
+                "label_counts": labels.get("label_counts"),
+                "trainable": labels.get("is_trainable_for_binary_eval"),
+            }
+        except Exception as e:
+            result["labels_error"] = str(e)
+
+    # Model status
+    if MODEL_META_PATH.exists():
+        try:
+            with open(MODEL_META_PATH) as f:
+                result["model"] = json.load(f)
+        except Exception as e:
+            result["model_error"] = str(e)
+
+    if not result:
+        raise HTTPException(404, "No health data available. Run scripts/reproduce.sh first.")
+
+    return result
 
 # ── Frontend Hosting ───────────────────────────────────────────────────────
 

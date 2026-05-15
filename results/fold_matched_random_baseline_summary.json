@@ -1,0 +1,202 @@
+{
+  "status": "ok",
+  "model_strategy": "model_top_pct_0.10",
+  "model_results_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/model_informed_walk_forward_results.csv",
+  "random_results_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/random_baseline_stability.csv",
+  "match_method": "within_fold_nearest_random_rows_by_standardized_execution_profile_distance",
+  "control_metrics": [
+    "total_trades",
+    "fill_rate",
+    "market_hhi",
+    "top_market_share",
+    "effective_markets"
+  ],
+  "match_count_per_fold": 3,
+  "max_match_distance": null,
+  "folds": [
+    {
+      "fold": 1,
+      "status": "ok",
+      "candidate_count": 20,
+      "matched_count": 3,
+      "best_distance": 0.7989677867160302,
+      "max_selected_distance": 1.011139201454292,
+      "passes_caliper": true
+    },
+    {
+      "fold": 2,
+      "status": "ok",
+      "candidate_count": 20,
+      "matched_count": 3,
+      "best_distance": 0.9647404478367713,
+      "max_selected_distance": 1.2876153371994417,
+      "passes_caliper": true
+    },
+    {
+      "fold": 3,
+      "status": "ok",
+      "candidate_count": 20,
+      "matched_count": 3,
+      "best_distance": 0.3222212676327203,
+      "max_selected_distance": 0.9241573842562424,
+      "passes_caliper": true
+    },
+    {
+      "fold": 4,
+      "status": "ok",
+      "candidate_count": 20,
+      "matched_count": 3,
+      "best_distance": 2.2469965839563595,
+      "max_selected_distance": 2.613028521149816,
+      "passes_caliper": true
+    },
+    {
+      "fold": 5,
+      "status": "ok",
+      "candidate_count": 20,
+      "matched_count": 3,
+      "best_distance": 4.449914154967443,
+      "max_selected_distance": 5.710301303215552,
+      "passes_caliper": true
+    }
+  ],
+  "model_aggregate": {
+    "folds": 5,
+    "total_trades": 1430,
+    "requested_trades": 1681,
+    "total_filled_notional": 77898.87150472679,
+    "mean_fill_rate": 0.4053394155712309,
+    "total_net_profit": 451407.68751751893,
+    "mean_roi_pct": 6.7529412231477135,
+    "total_equal_capital_net_profit": 39139.21502678165,
+    "mean_equal_capital_roi": 6.7529412324187845,
+    "mean_market_hhi": 0.019729575220191205,
+    "mean_top_market_share": 0.05785322660978089,
+    "mean_effective_markets": 69.82854099558843,
+    "fill_rate": 0.4053394155712309,
+    "market_hhi": 0.019729575220191205,
+    "top_market_share": 0.05785322660978089,
+    "effective_markets": 69.82854099558843
+  },
+  "matched_rank_count": 3,
+  "matched_rows": 15,
+  "caliper_passed_folds": 5,
+  "bootstrap_model_minus_matched_random": {
+    "status": "ok",
+    "fold_count": 5,
+    "bootstrap_samples": 1000,
+    "bootstrap_seed": 42,
+    "difference_metric": "model_minus_matched_random",
+    "intervals": {
+      "total_net_profit": {
+        "status": "ok",
+        "count": 1000,
+        "mean": 231629.24908808214,
+        "p025": -89686.80060340662,
+        "p50": 220305.39358920025,
+        "p975": 649158.9881482184,
+        "probability_model_beats_matched_random": 0.913
+      },
+      "mean_equal_capital_roi": {
+        "status": "ok",
+        "count": 1000,
+        "mean": 2.091396267299616,
+        "p025": -0.9737820215480745,
+        "p50": 2.071252218366112,
+        "p975": 5.211049993013501,
+        "probability_model_beats_matched_random": 0.899
+      },
+      "total_equal_capital_net_profit": {
+        "status": "ok",
+        "count": 1000,
+        "mean": 21649.93658554896,
+        "p025": -8514.719535736618,
+        "p50": 20698.935984839438,
+        "p975": 60778.00975524345,
+        "probability_model_beats_matched_random": 0.887
+      }
+    },
+    "output_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/fold_matched_random_bootstrap.csv"
+  },
+  "control_balance": {
+    "total_trades": {
+      "model": 1430.0,
+      "matched_random_mean": 674.0
+    },
+    "mean_fill_rate": {
+      "model": 0.4053394155712309,
+      "matched_random_mean": 0.6486846462004984
+    },
+    "mean_market_hhi": {
+      "model": 0.019729575220191205,
+      "matched_random_mean": 0.03335899557020116
+    },
+    "mean_top_market_share": {
+      "model": 0.05785322660978089,
+      "matched_random_mean": 0.08482246164222469
+    },
+    "mean_effective_markets": {
+      "model": 69.82854099558843,
+      "matched_random_mean": 33.30157373676717
+    }
+  },
+  "matched_rank_distributions": {
+    "total_net_profit": {
+      "count": 3,
+      "mean": 216963.43378116513,
+      "std": 160507.22754417264,
+      "min": 101274.70013734096,
+      "p05": 106088.21043478261,
+      "p50": 149409.80311175747,
+      "p95": 375126.19859613304,
+      "max": 400205.798094397
+    },
+    "mean_equal_capital_roi": {
+      "count": 3,
+      "mean": 4.654759941434308,
+      "std": 1.6526209390311688,
+      "min": 3.4886786181996983,
+      "p05": 3.532772365049548,
+      "p50": 3.9296160866981937,
+      "p95": 6.284348216134347,
+      "max": 6.545985119405032
+    },
+    "total_equal_capital_net_profit": {
+      "count": 3,
+      "mean": 17293.900070283373,
+      "std": 4291.436260798188,
+      "min": 14744.849624717048,
+      "p05": 14759.196572819845,
+      "p50": 14888.319105745017,
+      "p95": 21512.51024292375,
+      "max": 22248.531480388054
+    }
+  },
+  "model_vs_fold_matched_random": {
+    "model_strategy": "model_top_pct_0.10",
+    "total_net_profit": {
+      "status": "ok",
+      "observed": 451407.68751751893,
+      "random_percentile": 1.0,
+      "right_tail_p_value": 0.25,
+      "random_seed_count": 3
+    },
+    "mean_equal_capital_roi": {
+      "status": "ok",
+      "observed": 6.7529412324187845,
+      "random_percentile": 1.0,
+      "right_tail_p_value": 0.25,
+      "random_seed_count": 3
+    },
+    "total_equal_capital_net_profit": {
+      "status": "ok",
+      "observed": 39139.21502678165,
+      "random_percentile": 1.0,
+      "right_tail_p_value": 0.25,
+      "random_seed_count": 3
+    }
+  },
+  "matches_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/fold_matched_random_baseline_matches.csv",
+  "rank_summary_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/fold_matched_random_baseline_rank_summary.csv",
+  "output_json": "/Users/mac/project 2/poly/polymarket_alpha_research/results/fold_matched_random_baseline_summary.json"
+}

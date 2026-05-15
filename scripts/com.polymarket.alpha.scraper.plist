@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 任务标识 -->
+    <key>Label</key>
+    <string>com.polymarket.alpha.scraper</string>
+
+    <!-- 执行脚本路径 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/mac/project 2/poly/polymarket_alpha_research/scripts/cron_scrape.sh</string>
+    </array>
+
+    <!-- 每小时执行 (每 3600 秒) -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <!-- 工作目录 -->
+    <key>WorkingDirectory</key>
+    <string>/Users/mac/project 2/poly/polymarket_alpha_research</string>
+
+    <!-- 标准输出和错误日志 -->
+    <key>StandardOutPath</key>
+    <string>/Users/mac/project 2/poly/polymarket_alpha_research/logs/launchd_stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/mac/project 2/poly/polymarket_alpha_research/logs/launchd_stderr.log</string>
+
+    <!-- 开机自动加载 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 低优先级，不影响系统性能 -->
+    <key>LowPriorityIO</key>
+    <true/>
+    <key>Nice</key>
+    <integer>10</integer>
+</dict>
+</plist>

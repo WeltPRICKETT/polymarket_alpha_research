@@ -1,0 +1,119 @@
+{
+  "status": "ok",
+  "model_strategy": "model_top_pct_0.10",
+  "model_summary_json": "/Users/mac/project 2/poly/polymarket_alpha_research/results/model_informed_walk_forward_summary.json",
+  "random_seed_summary_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/random_baseline_seed_summary.csv",
+  "match_method": "nearest_random_seeds_by_standardized_execution_profile_distance",
+  "control_metrics": [
+    "total_trades",
+    "mean_fill_rate",
+    "mean_market_hhi",
+    "mean_top_market_share",
+    "mean_effective_markets"
+  ],
+  "available_seed_count": 20,
+  "matched_seed_count": 10,
+  "matched_seed_indices": [
+    10,
+    0,
+    13,
+    11,
+    18,
+    16,
+    5,
+    15,
+    8,
+    12
+  ],
+  "mean_match_distance": 4.618708420750838,
+  "control_balance": {
+    "total_trades": {
+      "model": 1430.0,
+      "matched_random_mean": 530.0,
+      "all_random_mean": 390.95,
+      "scale": 229.13532544856776
+    },
+    "mean_fill_rate": {
+      "model": 0.4053394155712309,
+      "matched_random_mean": 0.6902568449189928,
+      "all_random_mean": 0.6938202622276355,
+      "scale": 0.05817531616574026
+    },
+    "mean_market_hhi": {
+      "model": 0.019729575220191246,
+      "matched_random_mean": 0.05833789271924088,
+      "all_random_mean": 0.07094970854966368,
+      "scale": 0.020848028385500216
+    },
+    "mean_top_market_share": {
+      "model": 0.05785322660978093,
+      "matched_random_mean": 0.11753252698435761,
+      "all_random_mean": 0.13912343746650352,
+      "scale": 0.035255327757459896
+    },
+    "mean_effective_markets": {
+      "model": 69.82854099558843,
+      "matched_random_mean": 25.654607061545438,
+      "all_random_mean": 20.958277847599398,
+      "scale": 5.747712844093776
+    }
+  },
+  "matched_distributions": {
+    "total_net_profit": {
+      "count": 10,
+      "mean": 184134.96490989326,
+      "std": 148521.12096023094,
+      "min": 17760.726575017514,
+      "p05": 31607.032714942543,
+      "p50": 145610.24355114164,
+      "p95": 441922.74972611415,
+      "max": 509944.16346295434
+    },
+    "mean_equal_capital_roi": {
+      "count": 10,
+      "mean": 4.686413418313995,
+      "std": 1.9438748099922039,
+      "min": 1.0751725611141585,
+      "p05": 1.8012485684729536,
+      "p50": 4.7302360637372995,
+      "p95": 7.273701058085013,
+      "max": 8.177165107110094
+    },
+    "total_equal_capital_net_profit": {
+      "count": 10,
+      "mean": 17266.458238134244,
+      "std": 7380.279187038095,
+      "min": 5747.409909992697,
+      "p05": 5779.454991124155,
+      "p50": 17252.202671389095,
+      "p95": 25760.62422012088,
+      "max": 27089.45253599212
+    }
+  },
+  "model_vs_matched_random": {
+    "model_strategy": "model_top_pct_0.10",
+    "total_net_profit": {
+      "status": "ok",
+      "observed": 451407.68751751893,
+      "random_percentile": 0.9,
+      "right_tail_p_value": 0.18181818181818182,
+      "random_seed_count": 10
+    },
+    "mean_equal_capital_roi": {
+      "status": "ok",
+      "observed": 6.7529412324187845,
+      "random_percentile": 0.9,
+      "right_tail_p_value": 0.18181818181818182,
+      "random_seed_count": 10
+    },
+    "total_equal_capital_net_profit": {
+      "status": "ok",
+      "observed": 39139.21502678165,
+      "random_percentile": 1.0,
+      "right_tail_p_value": 0.09090909090909091,
+      "random_seed_count": 10
+    }
+  },
+  "matches_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/stratified_random_baseline_matches.csv",
+  "output_json": "/Users/mac/project 2/poly/polymarket_alpha_research/results/stratified_random_baseline_summary.json"
+}

@@ -14,6 +14,11 @@ from py_clob_client.client import ClobClient
 from py_clob_client.clob_types import ApiCreds, OpenOrderParams
 from py_clob_client.signing.model import ClobAuth
 
+
+class DataFetchError(RuntimeError):
+    """Raised when real Polymarket data cannot be fetched and mock fallback is disabled."""
+
+
 class PolymarketClient:
     """Client for interacting with Polymarket endpoints using multi-key rotation."""
     

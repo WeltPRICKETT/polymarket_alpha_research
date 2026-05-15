@@ -22,11 +22,21 @@ from src.config.settings import (
     LOG_LEVEL, TRAIN_RATIO, VAL_RATIO,
     CLEANER_MIN_TRADES, CLEANER_MIN_VOLUME, CLEANER_TOP_PERCENTILE,
     MIN_RESOLVED_TRADES, INFORMED_ACCURACY_THRESHOLD, LABEL_TOP_PERCENTILE,
+    FUTURE_LABEL_OBSERVATION_DAYS, FUTURE_LABEL_HORIZON_DAYS,
+    FUTURE_LABEL_MIN_RESOLVED_TRADES, FUTURE_LABEL_TOP_PERCENTILE,
 )
 from src.data_ingestion.storage import Storage
 from src.preprocessing.cleaner import DataCleaner
 from src.preprocessing.feature_engineer import FeatureEngineer
 from src.labeling.resolution_based import apply_resolution_labels
+from src.labeling.future_return import (
+    FutureReturnLabelConfig,
+    apply_future_return_labels,
+    assign_future_return_threshold,
+    build_observation_transactions,
+)
+from src.labeling.audit import write_label_audit
+from src.data_quality.audit import write_audit_artifacts
 
 logger.remove()
 logger.add(sys.stdout, level=LOG_LEVEL)
@@ -86,6 +96,43 @@ def temporal_train_test_split(
     return df
 
 
+def temporal_resplit_labeled_features(
+    labeled_df: pd.DataFrame,
+    train_ratio: float = TRAIN_RATIO,
+    val_ratio: float = VAL_RATIO,
+) -> pd.DataFrame:
+    """
+    Recompute train/val/test on the labeled sample itself.
+
+    Future-return labels drop right-censored rows. Splitting before that drop can
+    erase val/test entirely, so this is used after label eligibility is known.
+    """
+    df = labeled_df.copy()
+    df["first_trade_date"] = pd.to_datetime(df["first_trade_date"], errors="coerce")
+    df = df.dropna(subset=["first_trade_date"])
+    if df.empty:
+        return df
+
+    global_min = df["first_trade_date"].min()
+    global_max = df["first_trade_date"].max()
+    time_span = global_max - global_min
+    train_cutoff = global_min + time_span * train_ratio
+    val_cutoff = global_min + time_span * (train_ratio + val_ratio)
+
+    df["split"] = "test"
+    df.loc[df["first_trade_date"] < train_cutoff, "split"] = "train"
+    df.loc[(df["first_trade_date"] >= train_cutoff) & (df["first_trade_date"] < val_cutoff), "split"] = "val"
+    df["is_train"] = df["split"] == "train"
+    logger.info(
+        "Future-label eligible temporal split → Train: {:,} | Val: {:,} | Test: {:,}".format(
+            int((df["split"] == "train").sum()),
+            int((df["split"] == "val").sum()),
+            int((df["split"] == "test").sum()),
+        )
+    )
+    return df
+
+
 # ── Fallback composite label ──────────────────────────────────────────────────
 
 def _composite_label_for_split(subset: pd.DataFrame, split_name: str) -> pd.DataFrame:
@@ -140,6 +187,7 @@ def main(top_percentile: float = None, label_mode: str = "auto"):
         If set, keeps only the top N% of traders by volume.
     label_mode : str
         'resolution' — use P1.1 resolution-based labels (requires ≥MIN_RESOLVED_TRADES).
+        'future_return' — use independent future-window return labels.
         'composite'  — use composite-rank labels (v2 fallback).
         'auto'       — try resolution first; fall back to composite if data insufficient.
     """
@@ -174,7 +222,19 @@ def main(top_percentile: float = None, label_mode: str = "auto"):
     logger.info(f"Cleaned data saved → {clean_path.name}  ({len(cleaned_df):,} rows)")
 
     # ── Step 3: Feature engineering ──────────────────────────────────────────
-    engineer = FeatureEngineer(cleaned_df)
+    feature_source_df = cleaned_df
+    if label_mode == "future_return":
+        feature_source_df = build_observation_transactions(
+            cleaned_df,
+            observation_days=FUTURE_LABEL_OBSERVATION_DAYS,
+        )
+        logger.info(
+            "Future-return mode: feature source limited to first "
+            f"{FUTURE_LABEL_OBSERVATION_DAYS} day(s) per wallet "
+            f"({len(feature_source_df):,}/{len(cleaned_df):,} trades)."
+        )
+
+    engineer = FeatureEngineer(feature_source_df)
     features_df = engineer.build_features()
 
     if features_df.empty:
@@ -188,6 +248,29 @@ def main(top_percentile: float = None, label_mode: str = "auto"):
 
     # ── Step 5: Label assignment ─────────────────────────────────────────────
     use_resolution = False
+    label_strategy = "composite"
+
+    if label_mode == "future_return":
+        df = apply_future_return_labels(
+            df,
+            cleaned_df,
+            observation_days=FUTURE_LABEL_OBSERVATION_DAYS,
+            horizon_days=FUTURE_LABEL_HORIZON_DAYS,
+            min_future_resolved_trades=FUTURE_LABEL_MIN_RESOLVED_TRADES,
+            top_percentile=FUTURE_LABEL_TOP_PERCENTILE,
+        )
+        df = temporal_resplit_labeled_features(df, train_ratio=TRAIN_RATIO, val_ratio=VAL_RATIO)
+        df = assign_future_return_threshold(
+            df,
+            top_percentile=FUTURE_LABEL_TOP_PERCENTILE,
+            config=FutureReturnLabelConfig(
+                observation_days=FUTURE_LABEL_OBSERVATION_DAYS,
+                horizon_days=FUTURE_LABEL_HORIZON_DAYS,
+                min_future_resolved_trades=FUTURE_LABEL_MIN_RESOLVED_TRADES,
+                top_percentile=FUTURE_LABEL_TOP_PERCENTILE,
+            ),
+        )
+        label_strategy = "future_return"
 
     if label_mode in ("resolution", "auto"):
         # Attempt resolution-based labels (P1.1)
@@ -207,6 +290,7 @@ def main(top_percentile: float = None, label_mode: str = "auto"):
             )
             df = labeled
             use_resolution = True
+            label_strategy = "resolution"
         elif label_mode == "resolution":
             logger.warning(
                 f"Resolution labels only cover {resolution_rate:.1%} of traders. "
@@ -214,13 +298,14 @@ def main(top_percentile: float = None, label_mode: str = "auto"):
             )
             df = labeled
             use_resolution = True
+            label_strategy = "resolution"
         else:
             logger.info(
                 f"Resolution coverage too low ({resolution_rate:.1%}). "
                 f"Falling back to composite-rank labels."
             )
 
-    if not use_resolution:
+    if label_strategy == "composite" and not use_resolution:
         # Composite-rank labels — independent per split
         train_idx = df["split"] == "train"
         val_idx   = df["split"] == "val"
@@ -250,15 +335,28 @@ def main(top_percentile: float = None, label_mode: str = "auto"):
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_path, index=False)
 
+    write_label_audit(df, label_strategy=label_strategy, requested_label_mode=label_mode)
+
     logger.info("=" * 60)
     logger.info(f"✅  Phase 2 complete → {out_path.name}")
     logger.info(f"    Traders:  {len(df):,}  (train={n_train:,}  val={n_val:,}  test={n_test:,})")
     logger.info(f"    Labels:   train_pos={train_pos:,}/{n_train:,} ({train_pos/(n_train or 1):.1%})"
                 f"  |  val_pos={val_pos:,}/{n_val:,} ({val_pos/(n_val or 1):.1%})"
                 f"  |  test_pos={test_pos:,}/{n_test:,} ({test_pos/(n_test or 1):.1%})")
-    logger.info(f"    Label strategy: {'resolution-based (P1.1)' if use_resolution else 'composite-rank (fallback)'}")
+    if label_strategy == "future_return":
+        strategy_label = "future-return independent"
+    elif use_resolution:
+        strategy_label = "resolution-based (P1.1)"
+    else:
+        strategy_label = "composite-rank (fallback)"
+    logger.info(f"    Label strategy: {strategy_label}")
     logger.info(f"    NaNs in matrix: {df.isna().sum().sum()}")
     logger.info("=" * 60)
+
+    try:
+        write_audit_artifacts()
+    except Exception as e:
+        logger.warning(f"Data quality audit failed after preprocessing: {e}")
 
 
 if __name__ == "__main__":
@@ -267,10 +365,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Preprocessing & Feature Engineering Pipeline")
     parser.add_argument("--top-percentile", type=float, default=None,
                         help="Keep only top N%% traders by volume (e.g. 0.1 for top 10%%)")
-    parser.add_argument("--label-mode", choices=["auto", "resolution", "composite"],
+    parser.add_argument("--label-mode", choices=["auto", "resolution", "future_return", "composite"],
                         default="auto",
-                        help="Label strategy: auto (default), resolution, or composite")
+                        help="Label strategy: auto (default), resolution, future_return, or composite")
     args = parser.parse_args()
     main(top_percentile=args.top_percentile, label_mode=args.label_mode)
-
-

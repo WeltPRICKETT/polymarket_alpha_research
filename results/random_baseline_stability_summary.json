@@ -1,0 +1,106 @@
+{
+  "status": "ok",
+  "predictions_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/rolling_origin_predictions.csv",
+  "seed_count": 20,
+  "top_k": 20,
+  "top_percentile": 0.1,
+  "random_seed": 10000,
+  "distributions": {
+    "total_net_profit": {
+      "count": 20,
+      "mean": 158783.02426168448,
+      "std": 117889.52291604881,
+      "min": 17760.726575017514,
+      "p05": 32865.943695533315,
+      "p50": 147453.518533403,
+      "p95": 366343.40112962545,
+      "max": 509944.16346295434
+    },
+    "mean_equal_capital_roi": {
+      "count": 20,
+      "mean": 5.822633451390266,
+      "std": 2.393089325544475,
+      "min": 1.0751725611141585,
+      "p05": 2.6079996877605036,
+      "p50": 6.065005700752324,
+      "p95": 9.878256919055573,
+      "max": 11.09209447580765
+    },
+    "total_equal_capital_net_profit": {
+      "count": 20,
+      "mean": 20903.93160910306,
+      "std": 9290.75485060035,
+      "min": 5747.409909992697,
+      "p05": 5815.060636825774,
+      "p50": 21176.60013869928,
+      "p95": 34439.46030166625,
+      "max": 41493.20885106687
+    },
+    "mean_fill_rate": {
+      "count": 20,
+      "mean": 0.6938202622276355,
+      "std": 0.05817531616574026,
+      "min": 0.5969374228181344,
+      "p05": 0.602170663350114,
+      "p50": 0.706242620108898,
+      "p95": 0.7792129535143109,
+      "max": 0.8089116446139115
+    },
+    "mean_market_hhi": {
+      "count": 20,
+      "mean": 0.07094970854966376,
+      "std": 0.02084802838550022,
+      "min": 0.04553347454747994,
+      "p05": 0.049198638502109426,
+      "p50": 0.06575277706921111,
+      "p95": 0.10779458807788289,
+      "max": 0.12903736053677922
+    },
+    "mean_top_market_share": {
+      "count": 20,
+      "mean": 0.13912343746650357,
+      "std": 0.03525532775745989,
+      "min": 0.08904375667265615,
+      "p05": 0.0922800232497315,
+      "p50": 0.13401658327933702,
+      "p95": 0.20695857486515198,
+      "max": 0.21984195665680878
+    },
+    "mean_effective_markets": {
+      "count": 20,
+      "mean": 20.958277847599398,
+      "std": 5.747712844093777,
+      "min": 10.237374560065888,
+      "p05": 12.93008544188532,
+      "p50": 21.40384085947199,
+      "p95": 28.74671886258691,
+      "max": 29.876665258729094
+    }
+  },
+  "model_vs_random": {
+    "model_strategy": "model_top_pct_0.10",
+    "total_net_profit": {
+      "status": "ok",
+      "observed": 451407.68751751893,
+      "random_percentile": 0.95,
+      "right_tail_p_value": 0.09523809523809523,
+      "random_seed_count": 20
+    },
+    "mean_equal_capital_roi": {
+      "status": "ok",
+      "observed": 6.7529412324187845,
+      "random_percentile": 0.75,
+      "right_tail_p_value": 0.2857142857142857,
+      "random_seed_count": 20
+    },
+    "total_equal_capital_net_profit": {
+      "status": "ok",
+      "observed": 39139.21502678165,
+      "random_percentile": 0.95,
+      "right_tail_p_value": 0.09523809523809523,
+      "random_seed_count": 20
+    }
+  },
+  "output_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/random_baseline_stability.csv",
+  "seed_summary_csv": "/Users/mac/project 2/poly/polymarket_alpha_research/results/random_baseline_seed_summary.csv"
+}

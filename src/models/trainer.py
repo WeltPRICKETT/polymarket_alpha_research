@@ -11,19 +11,28 @@ Outputs: All plots saved to results/plots/, tables to results/, model to models/
 import sys
 import json
 import time
+import os
 import joblib
 import numpy as np
 import pandas as pd
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+MPL_CACHE_DIR = PROJECT_ROOT / ".cache" / "matplotlib"
+MPL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+os.environ.setdefault("MPLCONFIGDIR", str(MPL_CACHE_DIR))
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from pathlib import Path
 from loguru import logger
 from typing import Dict, List, Tuple, Any
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.dummy import DummyClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -38,7 +47,9 @@ from sklearn.metrics import (
     confusion_matrix, ConfusionMatrixDisplay,
     log_loss, brier_score_loss,
 )
-from sklearn.calibration import calibration_curve, CalibratedClassifierCV
+from sklearn.calibration import calibration_curve
+from sklearn.isotonic import IsotonicRegression
+from src.models.feature_sets import FEATURE_LEAKAGE_CLASS, get_feature_columns
 try:
     from xgboost import XGBClassifier
     HAS_XGB = True
@@ -53,23 +64,16 @@ except (ImportError, Exception) as e:
     HAS_LGBM = False
     logger.warning(f"LightGBM could not be loaded: {e}. Will skip LightGBM model.")
 
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-
 # ── Paths ─────────────────────────────────────────────────────────
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "features"
 MODEL_DIR = PROJECT_ROOT / "models" / "artifacts"
 RESULTS_DIR = PROJECT_ROOT / "results"
 PLOTS_DIR = RESULTS_DIR / "plots"
 
-# ── Feature Config ────────────────────────────────────────────────
-FEATURE_COLS = [
-    "total_roi", "max_drawdown", "win_rate", "profit_loss_ratio",
-    "early_entry_score", "contrarian_score", "information_ratio",
-    "cross_market_diversification", "avg_holding_period", "trading_frequency",
-    "capital_flow_centrality",
-]
 LABEL_COL = "Trader_Success_Rate"
+ALLOW_SINGLE_CLASS_SPLITS = os.getenv("POLYMARKET_ALLOW_SINGLE_CLASS_SPLITS", "false").lower() == "true"
+SKLEARN_N_JOBS = int(os.getenv("POLYMARKET_SKLEARN_N_JOBS", "1"))
+SEARCH_N_ITER = int(os.getenv("POLYMARKET_SEARCH_N_ITER", "8"))
 
 # ── Academic plot style ─────────────────────────────────────────────
 def _set_plot_style():
@@ -92,6 +96,35 @@ def _set_plot_style():
 ACADEMIC_COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
 
 
+class ValidationCalibratedModel:
+    """Wrap a fitted model with a probability calibrator trained only on validation data."""
+
+    def __init__(self, base_model, calibrator, method: str):
+        self.base_model = base_model
+        self.calibrator = calibrator
+        self.method = method
+        self.classes_ = np.array([0, 1])
+
+    def _raw_positive_proba(self, X):
+        proba = self.base_model.predict_proba(X)
+        classes = list(getattr(self.base_model, "classes_", [0, 1]))
+        if 1 in classes:
+            return proba[:, classes.index(1)]
+        return np.zeros(len(X))
+
+    def predict_proba(self, X):
+        raw = self._raw_positive_proba(X)
+        if self.method == "isotonic":
+            calibrated = self.calibrator.predict(raw)
+        else:
+            calibrated = self.calibrator.predict_proba(raw.reshape(-1, 1))[:, 1]
+        calibrated = np.clip(calibrated, 0.0, 1.0)
+        return np.column_stack([1.0 - calibrated, calibrated])
+
+    def predict(self, X):
+        return (self.predict_proba(X)[:, 1] >= 0.5).astype(int)
+
+
 # ══════════════════════════════════════════════════════════════════
 # ModelTrainer — Academic ML Research Engine
 # ══════════════════════════════════════════════════════════════════
@@ -102,8 +135,11 @@ class ModelTrainer:
     and exports all results as plots + CSV tables.
     """
 
-    def __init__(self, data_path: str = None):
+    def __init__(self, data_path: str = None, feature_set: str = None):
+        self.using_default_data_path = data_path is None
         self.data_path = data_path or str(DATA_DIR / "model_input.csv")
+        self.feature_set = feature_set or os.getenv("POLYMARKET_FEATURE_SET", "live")
+        self.feature_cols = get_feature_columns(self.feature_set)
         self.df = None
         self.X_train = self.X_val = self.X_test = None
         self.y_train = self.y_val = self.y_test = None
@@ -111,6 +147,9 @@ class ModelTrainer:
         self.models: Dict[str, Any] = {}
         self.results: Dict[str, Dict] = {}
         self.cv_results: List[Dict] = []
+        self.split_counts: Dict[str, int] = {}
+        self.label_counts_by_split: Dict[str, Dict[int, int]] = {}
+        self.split_order_column = None
         self._status = {"state": "idle", "progress": 0, "message": ""}
 
     @property
@@ -128,51 +167,100 @@ class ModelTrainer:
         self.df = pd.read_csv(self.data_path)
 
         # Try different data files if primary is too small
-        if len(self.df) < 20:
+        if self.using_default_data_path and len(self.df) < 20:
             alt_path = DATA_DIR / "model_input_top10.csv"
             if alt_path.exists():
                 logger.info(f"Primary dataset too small. Loading {alt_path}")
                 self.df = pd.read_csv(alt_path)
 
-        if "split" in self.df.columns:
-            train_df = self.df[self.df["split"] == "train"]
-            val_df   = self.df[self.df["split"] == "val"]
-            test_df  = self.df[self.df["split"] == "test"]
-        else:
-            # Backward compatibility
-            logger.warning("'split' column missing. Using 'is_train' to create pseudo-val set.")
-            train_full = self.df[self.df["is_train"] == True]
-            test_df    = self.df[self.df["is_train"] == False]
-            # Split train into train/val (temporal)
-            split_idx = int(len(train_full) * 0.8)
-            train_df = train_full.iloc[:split_idx]
-            val_df   = train_full.iloc[split_idx:]
-
-        self.X_train = train_df[FEATURE_COLS].values
-        self.y_train = train_df[LABEL_COL].values
-        self.X_val   = val_df[FEATURE_COLS].values
-        self.y_val   = val_df[LABEL_COL].values
-        self.X_test  = test_df[FEATURE_COLS].values
-        self.y_test  = test_df[LABEL_COL].values
-        self.test_addresses = test_df["address"].values
-
-        logger.info(f"Train: {len(self.X_train)} | Val: {len(self.X_val)} | Test: {len(self.X_test)}")
-
-        # Backward compat: if Trader_Success_Rate is missing, assign via train-set threshold
         if LABEL_COL not in self.df.columns:
             logger.warning(f"'{LABEL_COL}' not found. Computing from train-set Risk_Adjusted_Return...")
             train_rar = self.df.loc[self.df["is_train"] == True, "Risk_Adjusted_Return"]
             threshold = train_rar.quantile(0.8)
             self.df[LABEL_COL] = (self.df["Risk_Adjusted_Return"] >= threshold).astype(int)
             logger.info(f"Label threshold: {threshold:.4f}")
-            # Re-assign splits with corrected labels
-            train_df2 = self.df[self.df["is_train"] == True]
-            test_df2  = self.df[self.df["is_train"] == False]
-            self.y_train = train_df2[LABEL_COL].values
-            self.y_test  = test_df2[LABEL_COL].values
+
+        if "split" in self.df.columns:
+            train_df = self._sort_split_df(self.df[self.df["split"] == "train"].copy(), "train")
+            val_df   = self._sort_split_df(self.df[self.df["split"] == "val"].copy(), "val")
+            test_df  = self._sort_split_df(self.df[self.df["split"] == "test"].copy(), "test")
+        else:
+            # Backward compatibility
+            logger.warning("'split' column missing. Using 'is_train' to create pseudo-val set.")
+            train_full = self._sort_split_df(self.df[self.df["is_train"] == True].copy(), "train_full")
+            test_df    = self._sort_split_df(self.df[self.df["is_train"] == False].copy(), "test")
+            # Split train into train/val (temporal)
+            split_idx = int(len(train_full) * 0.8)
+            train_df = train_full.iloc[:split_idx]
+            val_df   = train_full.iloc[split_idx:]
+
+        missing_features = [col for col in self.feature_cols if col not in self.df.columns]
+        if missing_features:
+            raise ValueError(f"Feature set {self.feature_set!r} missing columns: {missing_features}")
+
+        logger.info(f"Using feature_set={self.feature_set}: {self.feature_cols}")
+
+        self.X_train = train_df[self.feature_cols].values
+        self.y_train = train_df[LABEL_COL].values
+        self.X_val   = val_df[self.feature_cols].values
+        self.y_val   = val_df[LABEL_COL].values
+        self.X_test  = test_df[self.feature_cols].values
+        self.y_test  = test_df[LABEL_COL].values
+        self.test_addresses = test_df["address"].values
+        self.split_counts = {
+            "train": int(len(train_df)),
+            "val": int(len(val_df)),
+            "test": int(len(test_df)),
+        }
+        self.label_counts_by_split = {
+            "train": self._label_counts(self.y_train),
+            "val": self._label_counts(self.y_val),
+            "test": self._label_counts(self.y_test),
+        }
+
+        logger.info(f"Train: {len(self.X_train)} | Val: {len(self.X_val)} | Test: {len(self.X_test)}")
 
         logger.info(f"Label dist (train): {dict(zip(*np.unique(self.y_train, return_counts=True)))}")
         logger.info(f"Label dist (test):  {dict(zip(*np.unique(self.y_test, return_counts=True)))}")
+        self._validate_label_splits()
+
+    def _sort_split_df(self, df: pd.DataFrame, split_name: str) -> pd.DataFrame:
+        """Sort split rows chronologically before TimeSeriesSplit consumes arrays."""
+        for col in ("first_trade_date", "timestamp"):
+            if col in df.columns:
+                sorted_df = df.assign(_sort_time=pd.to_datetime(df[col], errors="coerce"))
+                sorted_df = sorted_df.sort_values(["_sort_time", "address"], kind="mergesort")
+                self.split_order_column = col
+                logger.info(f"Sorted {split_name} split by {col}.")
+                return sorted_df.drop(columns=["_sort_time"])
+        self.split_order_column = self.split_order_column or "address"
+        logger.warning(f"No timestamp column available for {split_name}; sorting by address for deterministic order.")
+        return df.sort_values("address", kind="mergesort") if "address" in df.columns else df
+
+    @staticmethod
+    def _label_counts(labels: np.ndarray) -> Dict[int, int]:
+        values, counts = np.unique(labels, return_counts=True)
+        return {int(v): int(c) for v, c in zip(values, counts)}
+
+    def _validate_label_splits(self):
+        """Prevent invalid binary evaluation when a split has only one class."""
+        split_labels = {
+            "train": self.y_train,
+            "val": self.y_val,
+            "test": self.y_test,
+        }
+        single_class = [
+            split for split, labels in split_labels.items()
+            if len(labels) == 0 or len(np.unique(labels)) < 2
+        ]
+        if single_class and not ALLOW_SINGLE_CLASS_SPLITS:
+            raise ValueError(
+                "Invalid label distribution for binary evaluation. "
+                f"Single-class splits: {single_class}. "
+                "Regenerate labels/splits or set POLYMARKET_ALLOW_SINGLE_CLASS_SPLITS=true for diagnostics only."
+            )
+        if single_class:
+            logger.warning(f"Single-class splits allowed for diagnostics: {single_class}")
 
     # ── Model Definitions ─────────────────────────────────────────
 
@@ -195,7 +283,7 @@ class ModelTrainer:
                 },
             ),
             "Random Forest": (
-                RandomForestClassifier(random_state=42, class_weight="balanced", n_jobs=-1),
+                RandomForestClassifier(random_state=42, class_weight="balanced", n_jobs=SKLEARN_N_JOBS),
                 {
                     "n_estimators": [100, 200, 300, 500],
                     "max_depth": [3, 5, 7, 10, 15, None],
@@ -211,7 +299,7 @@ class ModelTrainer:
                 XGBClassifier(
                     eval_metric="logloss",
                     random_state=42, scale_pos_weight=spw,
-                    n_jobs=-1,
+                    n_jobs=SKLEARN_N_JOBS,
                 ),
                 {
                     "n_estimators": [100, 200, 500, 1000],
@@ -238,7 +326,7 @@ class ModelTrainer:
             models["LightGBM"] = (
                 LGBMClassifier(
                     random_state=42, scale_pos_weight=spw,
-                    verbose=-1, n_jobs=-1,
+                    verbose=-1, n_jobs=SKLEARN_N_JOBS,
                 ),
                 {
                     "n_estimators": [100, 200, 500, 1000],
@@ -255,10 +343,19 @@ class ModelTrainer:
 
         return models
 
+    def _build_baseline_models(self) -> Dict[str, Any]:
+        """Simple baselines that real models must beat."""
+        return {
+            "Baseline: Majority Class": DummyClassifier(strategy="most_frequent"),
+            "Baseline: Stratified Random": DummyClassifier(strategy="stratified", random_state=42),
+        }
+
     # ── Training ──────────────────────────────────────────────────
 
     def train_all(self):
         """Train all models with GridSearchCV and evaluate."""
+        self._train_baselines()
+
         model_defs = self._build_models()
         total = len(model_defs)
 
@@ -276,34 +373,20 @@ class ModelTrainer:
                 is_complex = name in ["Random Forest", "XGBoost", "LightGBM"]
                 cv = TimeSeriesSplit(n_splits=5)
                 
-                search_params = {
-                    "estimator": estimator,
-                    "param_distributions": param_grid if is_complex else param_grid, # param_grid is a dict
-                    "cv": cv,
-                    "scoring": "roc_auc",
-                    "n_jobs": -1,
-                    "verbose": 0,
-                    "return_train_score": True
-                }
-                
-                # Fit parameters for early stopping
+                # Keep search fit parameters version-neutral. Recent XGBoost and
+                # LightGBM sklearn wrappers reject legacy early_stopping_rounds
+                # in fit(); production runs can add version-pinned callbacks.
                 fit_params = {}
-                if name in ["XGBoost", "LightGBM"]:
-                    fit_params = {
-                        "eval_set": [(self.X_val, self.y_val)],
-                        "early_stopping_rounds": 15,
-                        "verbose": False
-                    }
 
                 if is_complex:
                     # Use RandomizedSearchCV for large grids
                     search = RandomizedSearchCV(
                         estimator=estimator,
                         param_distributions=param_grid,
-                        n_iter=30, # Explore 30 combinations
+                        n_iter=SEARCH_N_ITER,
                         cv=cv,
                         scoring="roc_auc",
-                        n_jobs=-1,
+                        n_jobs=SKLEARN_N_JOBS,
                         random_state=42,
                         return_train_score=True
                     )
@@ -313,7 +396,7 @@ class ModelTrainer:
                         param_grid=param_grid,
                         cv=cv,
                         scoring="roc_auc",
-                        n_jobs=-1,
+                        n_jobs=SKLEARN_N_JOBS,
                         return_train_score=True
                     )
                 try:
@@ -336,11 +419,9 @@ class ModelTrainer:
                 best_cv_score = 0.0
                 best_params = {}
 
-            # P2.4: Probability Calibration
-            logger.info("Calibrating probabilities...")
-            calibrated_model = CalibratedClassifierCV(best_model, method='isotonic', cv=3)
-            calibrated_model.fit(self.X_train, self.y_train)
-            best_model = calibrated_model
+            # Cross-validation detailed scores on the uncalibrated fitted estimator.
+            cv_detail = self._cross_validate(name, best_model)
+            best_model, calibration_info = self._calibrate_on_validation(name, best_model)
 
             elapsed = time.time() - start
             self.models[name] = best_model
@@ -350,14 +431,13 @@ class ModelTrainer:
             metrics["cv_auc"] = best_cv_score
             metrics["best_params"] = best_params
             metrics["train_time_sec"] = round(elapsed, 2)
+            metrics["calibration"] = calibration_info
 
-            # Cross-validation detailed scores
-            cv_detail = self._cross_validate(name, best_model)
             metrics["cv_detail"] = cv_detail
 
             # P2.2: Overfitting Detection (Train vs Val)
-            train_auc = roc_auc_score(self.y_train, best_model.predict_proba(self.X_train)[:, 1])
-            val_auc = roc_auc_score(self.y_val, best_model.predict_proba(self.X_val)[:, 1])
+            train_auc = self._safe_auc(self.y_train, self._positive_proba(best_model, self.X_train))
+            val_auc = self._safe_auc(self.y_val, self._positive_proba(best_model, self.X_val))
             test_auc = metrics["auc_roc"]
             
             metrics["train_auc"] = train_auc
@@ -378,10 +458,66 @@ class ModelTrainer:
             self.results[name] = metrics
             logger.info(f"  Training time: {elapsed:.1f}s")
 
+    def _train_baselines(self):
+        """Train and evaluate non-ML baselines before tuned models."""
+        for name, model in self._build_baseline_models().items():
+            logger.info("=" * 60)
+            logger.info(f"Training baseline: {name}")
+            logger.info("=" * 60)
+            start = time.time()
+            model.fit(self.X_train, self.y_train)
+            self.models[name] = model
+            metrics = self._evaluate(name, model)
+            metrics["cv_auc"] = 0.5
+            metrics["best_params"] = {}
+            metrics["train_time_sec"] = round(time.time() - start, 2)
+            metrics["calibration"] = {"method": "none", "data": "not_applicable"}
+            metrics["cv_detail"] = {}
+            metrics["train_auc"] = self._safe_auc(self.y_train, self._positive_proba(model, self.X_train))
+            metrics["val_auc"] = self._safe_auc(self.y_val, self._positive_proba(model, self.X_val))
+            metrics["overfit_warning_val"] = False
+            metrics["overfit_warning_test"] = False
+            self.results[name] = metrics
+
+    def _calibrate_on_validation(self, name: str, model):
+        """Calibrate a fitted estimator on the independent validation split."""
+        if len(np.unique(self.y_val)) < 2:
+            logger.warning(f"Skipping calibration for {name}: validation split has one class.")
+            return model, {"method": "none", "data": "skipped_single_class_validation"}
+
+        method = "isotonic" if min(np.bincount(self.y_val.astype(int), minlength=2)) >= 30 else "sigmoid"
+        logger.info(f"Calibrating probabilities on validation split (method={method})...")
+        raw_val = self._positive_proba(model, self.X_val)
+        if method == "isotonic":
+            calibrator = IsotonicRegression(out_of_bounds="clip")
+            calibrator.fit(raw_val, self.y_val)
+        else:
+            calibrator = LogisticRegression(max_iter=1000, random_state=42)
+            calibrator.fit(raw_val.reshape(-1, 1), self.y_val)
+        calibrated_model = ValidationCalibratedModel(model, calibrator, method)
+        return calibrated_model, {
+            "method": method,
+            "data": "validation",
+            "validation_samples": int(len(self.y_val)),
+        }
+
+    def _positive_proba(self, model, X: np.ndarray) -> np.ndarray:
+        proba = model.predict_proba(X)
+        classes = list(getattr(model, "classes_", [0, 1]))
+        if 1 in classes:
+            return proba[:, classes.index(1)]
+        return np.zeros(len(X))
+
+    @staticmethod
+    def _safe_auc(y_true: np.ndarray, y_prob: np.ndarray) -> float:
+        if len(np.unique(y_true)) < 2:
+            return 0.5
+        return float(roc_auc_score(y_true, y_prob))
+
     def _evaluate(self, name: str, model) -> Dict:
         """Evaluate model on test set, return metrics dict."""
         y_pred = model.predict(self.X_test)
-        y_prob = model.predict_proba(self.X_test)[:, 1]
+        y_prob = self._positive_proba(model, self.X_test)
 
         n_classes = len(np.unique(self.y_test))
         
@@ -443,7 +579,7 @@ class ModelTrainer:
             scores = cross_validate(
                 model, self.X_train, self.y_train, cv=cv,
                 scoring=["accuracy", "roc_auc", "f1", "precision", "recall"],
-                n_jobs=-1, return_train_score=False,
+                n_jobs=SKLEARN_N_JOBS, return_train_score=False,
             )
             detail = {
                 "accuracy_mean": scores["test_accuracy"].mean(),
@@ -673,6 +809,7 @@ class ModelTrainer:
         for name, res in self.results.items():
             rows.append({
                 "Model": name,
+                "Model Type": "baseline" if name.startswith("Baseline:") else "model",
                 "Accuracy": round(res["accuracy"], 4),
                 "Precision": round(res["precision"], 4),
                 "Recall": round(res["recall"], 4),
@@ -704,9 +841,20 @@ class ModelTrainer:
         report = {
             "timestamp": pd.Timestamp.now().isoformat(),
             "data_path": self.data_path,
+            "split_order_column": self.split_order_column,
+            "split_counts": self.split_counts,
+            "label_counts_by_split": self.label_counts_by_split,
             "train_samples": len(self.X_train),
+            "val_samples": len(self.X_val),
             "test_samples": len(self.X_test),
-            "features": FEATURE_COLS,
+            "feature_set": self.feature_set,
+            "features": self.feature_cols,
+            "feature_leakage_class": {
+                col: FEATURE_LEAKAGE_CLASS.get(col, "unknown")
+                for col in self.feature_cols
+            },
+            "label_audit": self._load_label_audit_summary(),
+            "baselines": list(self._build_baseline_models().keys()),
             "models": {},
         }
         for name, res in self.results.items():
@@ -719,6 +867,17 @@ class ModelTrainer:
         with open(report_path, "w") as f:
             json.dump(report, f, indent=2, default=str)
         logger.info(f"Saved training report to {report_path}")
+
+    def _load_label_audit_summary(self) -> Dict:
+        summary_path = RESULTS_DIR / "label_summary.json"
+        if not summary_path.exists():
+            return {}
+        try:
+            with open(summary_path) as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not read label_summary.json: {e}")
+            return {}
 
     def _mcnemar_tests(self):
         """Pairwise McNemar's test for statistical significance."""
@@ -782,12 +941,29 @@ class ModelTrainer:
         joblib.dump(best_model, model_path)
         logger.info(f"Saved best model ({best_name}, AUC={best_auc:.4f}) to {model_path}")
 
+        # Data snapshot hash for traceability
+        import hashlib
+        data_file = Path(self.data_path)
+        data_hash = hashlib.sha256(data_file.read_bytes()).hexdigest()[:16] if data_file.exists() else "unknown"
+        label_summary = self._load_label_audit_summary()
+
         meta = {
             "model_name": best_name,
             "auc_roc": best_auc,
             "accuracy": self.results[best_name]["accuracy"],
+            "precision": self.results[best_name]["precision"],
+            "recall": self.results[best_name]["recall"],
             "f1": self.results[best_name]["f1"],
-            "feature_columns": FEATURE_COLS,
+            "avg_precision": self.results[best_name]["avg_precision"],
+            "brier_score": self.results[best_name]["brier_score"],
+            "feature_set": self.feature_set,
+            "feature_columns": self.feature_cols,
+            "data_snapshot_hash": data_hash,
+            "label_strategy": label_summary.get("label_strategy", "unknown"),
+            "training_date": pd.Timestamp.now().isoformat(),
+            "train_samples": len(self.X_train),
+            "val_samples": len(self.X_val),
+            "test_samples": len(self.X_test),
         }
         meta_path = MODEL_DIR / "model_metadata.json"
         with open(meta_path, "w") as f:

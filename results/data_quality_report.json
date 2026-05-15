@@ -1,0 +1,120 @@
+{
+  "generated_at": "2026-05-15T11:56:17.519082+00:00",
+  "database": {
+    "path": "data/research.db",
+    "exists": true,
+    "bytes": 884232192
+  },
+  "transactions": {
+    "row_count": 1730663,
+    "unique_transaction_ids": 1730663,
+    "duplicate_transaction_ids": 0,
+    "unique_wallets": 205289,
+    "unique_markets": 98120,
+    "min_timestamp": "2026-03-18 00:57:21.000000",
+    "max_timestamp": "2026-05-15 11:34:40.000000",
+    "missing_critical": {
+      "transaction_id": 0,
+      "address": 0,
+      "market_id": 5,
+      "timestamp": 0
+    },
+    "invalid_price_count": 1,
+    "invalid_amount_count": 0,
+    "missing_outcome_count": 3
+  },
+  "market_resolutions": {
+    "path": "data/processed/market_resolutions.csv",
+    "row_count": 98023,
+    "unique_markets": 98022,
+    "open_count": 8704,
+    "missing_resolution_count": 0,
+    "schema_columns": [
+      "market_id",
+      "question",
+      "resolution",
+      "closed",
+      "winning_outcome",
+      "winning_outcome_index",
+      "winning_outcome_price",
+      "outcomes_json",
+      "outcome_prices_json",
+      "slug",
+      "resolution_method",
+      "resolved_at"
+    ],
+    "has_extended_resolution_schema": true
+  },
+  "feature_matrix": {
+    "path": "data/features/model_input.csv",
+    "row_count": 15835,
+    "column_count": 29,
+    "missing_values": 0,
+    "split_counts": {
+      "train": 13698,
+      "val": 1098,
+      "test": 1039
+    },
+    "label_counts": {
+      "0": 12647,
+      "1": 3188
+    },
+    "label_counts_by_split": {
+      "test:0": 810,
+      "test:1": 229,
+      "train:0": 10958,
+      "train:1": 2740,
+      "val:0": 879,
+      "val:1": 219
+    }
+  },
+  "label_audit": {
+    "generated_at": "2026-05-15T11:56:17.376715+00:00",
+    "requested_label_mode": "future_return",
+    "label_strategy": "future_return",
+    "label_independence": "independent_future_return",
+    "row_count": 15835,
+    "label_counts": {
+      "0": 12647,
+      "1": 3188
+    },
+    "label_counts_by_split": {
+      "test:0": 810,
+      "test:1": 229,
+      "train:0": 10958,
+      "train:1": 2740,
+      "val:0": 879,
+      "val:1": 219
+    },
+    "label_source_counts": {
+      "future_return": 15835
+    },
+    "single_class_splits": [],
+    "is_trainable_for_binary_eval": true,
+    "future_return_basis_fields": [
+      "feature_cutoff",
+      "label_window_end",
+      "future_n_resolved_trades",
+      "future_net_profit",
+      "future_roi",
+      "future_return_threshold"
+    ],
+    "future_return_threshold": 0.4323865591649691,
+    "future_label_coverage": {
+      "eligible_rows": 15835,
+      "mean_future_resolved_trades": 25.44755288916956
+    }
+  },
+  "collection_provenance": {
+    "collection_runs": {
+      "row_count": 17,
+      "latest_started_at": "2026-05-15 11:36:05.018380",
+      "total_new_trades": 40754
+    },
+    "raw_api_pages": {
+      "row_count": 7265,
+      "run_count": 16,
+      "payload_rows": 53696
+    }
+  }
+}

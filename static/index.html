@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Polymarket Alpha Research Dashboard — AI-powered prediction market analysis platform">
+    <title>POLY_ALPHA // Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Academic UI Setup -->
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">Polymarket Alpha</h1>
+                <p class="logo-sub">Academic Research Dashboard v4.0</p>
+                <div class="logo-line"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-label">[SYSTEM_MODULES]</div>
+                <div class="nav-item active" data-tab="overview" id="nav-overview">
+                    <span class="nav-icon">◈</span> SYS_DASHBOARD
+                </div>
+                <div class="nav-item" data-tab="analytics" id="nav-analytics">
+                    <span class="nav-icon">◇</span> DATA_ANALYTICS
+                </div>
+                <div class="nav-item" data-tab="control" id="nav-control">
+                    <span class="nav-icon">⬡</span> CONTROL_PANEL
+                </div>
+                <div class="nav-item" data-tab="models" id="nav-models">
+                    <span class="nav-icon">△</span> ML_MODELS
+                </div>
+                <div class="nav-item" data-tab="visuals" id="nav-visuals">
+                    <span class="nav-icon">◎</span> VISUAL_OUTPUT
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <span class="status-text">System Status: <span class="status-ok">Online</span></span>
+                <div class="status-dot"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div>
+                    <h2 class="header-title" id="header-title">
+                        Analytical Overview
+                    </h2>
+                    <p class="header-sub">System Monitoring and Status Console</p>
+                </div>
+
+            </header>
+
+            <!-- Tab: Overview -->
+            <section class="tab-content active" id="tab-overview">
+                <div class="stats-grid">
+                    <div class="stat-card border-top-cyan">
+                        <h3 class="stat-label text-cyan">[TRADE_VOL]</h3>
+                        <p class="stat-value text-glow" id="stat-trades">—</p>
+                        <div class="stat-bar"><div class="stat-bar-fill cyan" id="bar-trades"></div></div>
+                    </div>
+                    <div class="stat-card border-top-magenta">
+                        <h3 class="stat-label text-magenta">[MARKET_NODES]</h3>
+                        <p class="stat-value text-magenta" id="stat-markets">—</p>
+                        <div class="stat-bar"><div class="stat-bar-fill magenta" id="bar-markets"></div></div>
+                    </div>
+                    <div class="stat-card border-top-green">
+                        <h3 class="stat-label text-green">[WALLET_NODES]</h3>
+                        <p class="stat-value text-green" id="stat-wallets">—</p>
+                        <div class="stat-bar"><div class="stat-bar-fill green" id="bar-wallets"></div></div>
+                    </div>
+                    <div class="stat-card border-top-cyan">
+                        <h3 class="stat-label text-cyan">[LAST_SYNC]</h3>
+                        <p class="stat-value-sm text-green" id="stat-last-update">AWAITING_SIGNAL</p>
+                        <p class="stat-hint">ORACLE_LINK: ESTABLISHED</p>
+                    </div>
+                </div>
+
+                <!-- Telemetry Feed -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3 class="card-title text-cyan">Event Log</h3>
+                        <span class="badge badge-magenta">Live</span>
+                    </div>
+                    <div class="log-container" id="log-container">
+                        <div class="log-placeholder">Connecting to telemetry stream...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Analytics -->
+            <section class="tab-content" id="tab-analytics">
+                <!-- Timeline Chart -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3 class="card-title text-cyan">TRADE_VOLUME_TIMELINE</h3>
+                        <div class="interval-selector">
+                            <button class="btn-sm active" data-interval="day" id="interval-day">DAY</button>
+                            <button class="btn-sm" data-interval="month" id="interval-month">MONTH</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="timeline-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="two-col">
+                    <!-- Top Wallets -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title text-green">TOP_WALLETS</h3>
+                        </div>
+                        <div class="table-container" id="wallets-table">
+                            <div class="log-placeholder">Loading wallet data...</div>
+                        </div>
+                    </div>
+                    <!-- Top Markets -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title text-magenta">TOP_MARKETS</h3>
+                        </div>
+                        <div class="table-container" id="markets-table">
+                            <div class="log-placeholder">Loading market data...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Control Panel -->
+            <section class="tab-content" id="tab-control">
+                <div class="two-col">
+                    <div class="card border-top-cyan">
+                        <h3 class="card-title text-cyan" style="margin-bottom:16px;">SCRAPER_CONTROL</h3>
+                        <p class="card-desc">Execute incremental or full data collection from Polymarket's public API feeds.</p>
+                        <div class="control-buttons">
+                            <button class="btn btn-cyan" id="btn-scrape-incr" onclick="triggerScrape('incremental')">
+                                ▶ INCREMENTAL_SCRAPE
+                            </button>
+                            <button class="btn btn-magenta" id="btn-scrape-full" onclick="triggerScrape('full')">
+                                ⟳ FULL_RESCRAPE
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card border-top-green">
+                        <h3 class="card-title text-green" style="margin-bottom:16px;">PIPELINE_CONTROL</h3>
+                        <p class="card-desc">Run the complete pipeline: Scrape → Clean → Feature Engineer → Visualize</p>
+                        <div class="control-buttons">
+                            <button class="btn btn-green" id="btn-pipeline" onclick="triggerPipeline()">
+                                ⚡ EXECUTE_FULL_PIPELINE
+                            </button>
+                            <button class="btn btn-cyan" id="btn-backtest" onclick="triggerBacktest()">
+                                📊 RUN_BACKTEST
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pipeline Status -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3 class="card-title text-cyan">PIPELINE_STATUS</h3>
+                        <span class="badge" id="pipeline-badge">IDLE</span>
+                    </div>
+                    <div class="pipeline-status">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="pipeline-progress"></div>
+                        </div>
+                        <p class="pipeline-message" id="pipeline-message">No active pipeline.</p>
+                    </div>
+                    <div class="log-container" id="pipeline-log-container" style="margin-top: 16px;">
+                        <div class="log-placeholder">Pipeline output will appear here...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Models -->
+            <section class="tab-content" id="tab-models">
+                <!-- Training Controls -->
+                <div class="two-col">
+                    <div class="card border-top-green">
+                        <h3 class="card-title text-green" style="margin-bottom:16px;">TRAINING_CONTROL</h3>
+                        <p class="card-desc">Train 5 classification models: Logistic Regression, Random Forest, XGBoost, LightGBM, Gaussian NB. Generates confusion matrices, ROC/PR/Calibration curves, and statistical tests.</p>
+                        <div class="control-buttons">
+                            <button class="btn btn-green" id="btn-ml-train" onclick="triggerMLTrain()">
+                                🧠 TRAIN_ALL_MODELS
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card border-top-cyan">
+                        <h3 class="card-title text-cyan" style="margin-bottom:16px;">ML_PIPELINE_STATUS</h3>
+                        <div class="pipeline-status">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="ml-progress"></div>
+                            </div>
+                            <p class="pipeline-message" id="ml-message">No active ML training.</p>
+                        </div>
+                        <span class="badge" id="ml-badge" style="margin-top:12px;">IDLE</span>
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <h3 class="card-title text-cyan" style="margin-bottom: 24px; border-left: 4px solid var(--primary); padding-left: 12px;">
+                        Model Performance Evaluation
+                    </h3>
+                    <div class="table-container" id="comparison-table">
+                        <div class="log-placeholder">No model results yet. Click TRAIN_ALL_MODELS to begin.</div>
+                    </div>
+                </div>
+
+                <!-- Multi-metric Bar Chart -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3 class="card-title text-cyan">AUC_ROC // MODEL_COMPARISON</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="model-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="two-col">
+                    <div class="card border-top-green">
+                        <h3 class="card-subtitle text-green">EVALUATION_OUTPUTS</h3>
+                        <p class="card-text">
+                            > results/plots/confusion_matrices.png<br>
+                            > results/plots/roc_comparison.png<br>
+                            > results/plots/pr_comparison.png<br>
+                            > results/plots/calibration.png<br>
+                            > results/model_comparison.csv<br>
+                            > results/mcnemar_tests.csv
+                        </p>
+                    </div>
+                    <div class="card border-top-magenta">
+                        <h3 class="card-subtitle text-magenta">INTEGRITY_CHECK</h3>
+                        <p class="card-text">
+                            > Stratified 5-fold CV: APPLIED<br>
+                            > McNemar's Test: PAIRWISE<br>
+                            > Calibration Curves: VERIFIED<br>
+                            > Look-ahead Bias: NEUTRALIZED
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Visuals -->
+            <section class="tab-content" id="tab-visuals">
+                <div class="visuals-grid" id="visuals-grid">
+                    <div class="log-placeholder">Loading visual outputs...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

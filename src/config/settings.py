@@ -53,6 +53,12 @@ MIN_RESOLVED_TRADES: int = int(os.getenv("MIN_RESOLVED_TRADES", "3"))
 INFORMED_ACCURACY_THRESHOLD: float = float(os.getenv("INFORMED_ACCURACY_THRESHOLD", "0.60"))
 # Percentile cutoff for composite-rank fallback label
 LABEL_TOP_PERCENTILE: float = 0.20
+# Independent future-return label window. Features are computed from the
+# observation window; labels are computed from resolved trades after it.
+FUTURE_LABEL_OBSERVATION_DAYS: int = int(os.getenv("FUTURE_LABEL_OBSERVATION_DAYS", "1"))
+FUTURE_LABEL_HORIZON_DAYS: int = int(os.getenv("FUTURE_LABEL_HORIZON_DAYS", "14"))
+FUTURE_LABEL_MIN_RESOLVED_TRADES: int = int(os.getenv("FUTURE_LABEL_MIN_RESOLVED_TRADES", "3"))
+FUTURE_LABEL_TOP_PERCENTILE: float = float(os.getenv("FUTURE_LABEL_TOP_PERCENTILE", "0.20"))
 
 # ── ML Training Parameters ──────────────────────────────────────────────────
 CV_FOLDS: int = 5
@@ -65,4 +71,3 @@ RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 (BASE_DIR / "data" / "features").mkdir(parents=True, exist_ok=True)
 (BASE_DIR / "results" / "plots").mkdir(parents=True, exist_ok=True)
 (BASE_DIR / "models" / "artifacts").mkdir(parents=True, exist_ok=True)
-
