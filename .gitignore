@@ -2,6 +2,7 @@
 .env
 .venv
 venv/
+conda-env/
 ENV/
 env.bak/
 venv.bak/
@@ -11,20 +12,24 @@ __pycache__/
 *.py[cod]
 *$py.class
 .cache/
+logs/
 
 # Jupyter Notebook
 .ipynb_checkpoints
 
 # Data
 # Keep directory structure but exclude large files
+data/
 data/raw/*
 data/processed/*
 data/features/*
+data/external/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/features/.gitkeep
 # Exclude large database files (GitHub 100MB limit)
 data/research.db
+polymarket_events.csv
 *.db
 *.sqlite
 *.sqlite3
@@ -38,3 +43,49 @@ data/research.db
 ehthumbs.db
 Thumbs.db
 docs/assignment3_report.docx
+
+# LaTeX build artifacts
+latex/*.aux
+latex/*.bbl
+latex/*.bcf
+latex/*.blg
+latex/*.fdb_latexmk
+latex/*.fls
+latex/*.log
+latex/*.out
+latex/*.toc
+latex/*.run.xml
+latex/*.synctex.gz
+latex/*.fff
+latex/*.ttt
+
+# Word temp files
+docs/.~*
+
+# Research, manuscript, and local work artifacts
+AGENTS.md
+AI_HANDOFF.md
+CLAUDE.md
+.baoyu-skills/
+code/
+docs/
+latex/
+latex_ieee/
+models/
+references/
+research/
+results/
+styles/
+项目素材/
+docs/Polymarket_Alpha_*.docx
+docs/Polymarket_Alpha_*.pdf
+docs/Polymarket_Alpha_*-zh-CN/
+docs/archive/exports/*.docx
+docs/ppt_html_revision_pack_*/
+docs/review_exports/
+docs/review_packages/
+docs/submission_packages/
+docs/workstreams/**/tri_model_predictions.csv
+
+# Scratch / one-off scripts
+scratch/

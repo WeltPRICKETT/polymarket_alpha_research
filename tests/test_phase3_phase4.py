@@ -10,6 +10,17 @@ def test_live_feature_set_excludes_post_resolution_features():
     assert all(FEATURE_LEAKAGE_CLASS[col] == "pre_resolution_live" for col in live_cols)
 
 
+def test_live_event_feature_set_adds_pre_resolution_event_context():
+    from src.models.feature_sets import FEATURE_LEAKAGE_CLASS, get_feature_columns
+
+    live_event_cols = get_feature_columns("live_event")
+
+    assert "total_roi" not in live_event_cols
+    assert "unique_events" in live_event_cols
+    assert "event_notional_hhi" in live_event_cols
+    assert FEATURE_LEAKAGE_CLASS["unique_events"] == "pre_resolution_event_context"
+
+
 def test_research_feature_set_keeps_explanatory_features():
     from src.models.feature_sets import get_feature_columns
 

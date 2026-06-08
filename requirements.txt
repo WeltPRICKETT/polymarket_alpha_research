@@ -14,6 +14,7 @@ cloudpickle==3.1.2
 contourpy==1.3.3
 cycler==0.12.1
 cytoolz==1.1.0
+duckdb==1.4.3
 eth-account==0.13.7
 eth-hash==0.7.1
 eth-keyfile==0.8.1
@@ -31,6 +32,7 @@ hexbytes==1.3.1
 hpack==4.1.0
 httpcore==1.0.9
 httpx==0.28.1
+huggingface_hub==1.2.3
 hyperframe==6.1.0
 idna==3.11
 iniconfig==2.3.0
@@ -50,6 +52,7 @@ parsimonious==0.10.0
 pillow==12.1.1
 plotly==6.6.0
 pluggy==1.6.0
+polars==1.36.1
 poly_eip712_structs==0.0.1
 propcache==0.4.1
 py_builder_signing_sdk==0.0.2
@@ -58,6 +61,7 @@ py_order_utils==0.3.2
 pycryptodome==3.23.0
 pydantic==2.12.5
 pydantic_core==2.41.5
+pyarrow==22.0.0
 Pygments==2.19.2
 pyparsing==3.3.2
 pytest==9.0.2

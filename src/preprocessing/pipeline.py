@@ -37,6 +37,7 @@ from src.labeling.future_return import (
 )
 from src.labeling.audit import write_label_audit
 from src.data_quality.audit import write_audit_artifacts
+from src.data_ingestion.external_sources import build_wallet_event_features
 
 logger.remove()
 logger.add(sys.stdout, level=LOG_LEVEL)
@@ -236,6 +237,20 @@ def main(top_percentile: float = None, label_mode: str = "auto"):
 
     engineer = FeatureEngineer(feature_source_df)
     features_df = engineer.build_features()
+    market_event_map_path = BASE_DIR / "data" / "processed" / "sii_market_event_map.csv"
+    if market_event_map_path.exists():
+        try:
+            market_event_map = pd.read_csv(market_event_map_path, low_memory=False)
+            event_features = build_wallet_event_features(feature_source_df, market_event_map)
+            features_df = features_df.merge(event_features, on="address", how="left")
+            event_cols = [col for col in event_features.columns if col != "address"]
+            features_df[event_cols] = features_df[event_cols].fillna(0)
+            logger.info(
+                "Merged SII event-context wallet features "
+                f"({len(event_cols)} columns from {market_event_map_path.name})."
+            )
+        except Exception as e:
+            logger.warning(f"Failed to merge SII event-context wallet features: {e}")
 
     if features_df.empty:
         logger.error("Feature matrix is empty. Aborting.")

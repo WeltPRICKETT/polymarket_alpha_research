@@ -1,1 +1,0 @@
-timestamp,market_id,expert_address,strategy,exec_price,expert_price,expert_bet,final_resolution,requested_notional,filled_notional,recent_market_volume,participation_rate,liquidity_cap,capital_cap,market_exposure_before,market_exposure_after,slippage,fee,gross_profit,net_profit,balance

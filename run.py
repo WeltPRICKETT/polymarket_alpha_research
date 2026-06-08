@@ -16,18 +16,22 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 VENV_PYTHON = BASE_DIR / "venv" / "bin" / "python"
+CONDA_ENV_PYTHON = BASE_DIR / "conda-env" / "bin" / "python"
 MPL_CACHE_DIR = BASE_DIR / ".cache" / "matplotlib"
 MPL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("MPLCONFIGDIR", str(MPL_CACHE_DIR))
 
 # ── Auto-relaunch with venv Python if not already using it ──────
 def _is_in_venv():
-    """Check if we're running inside the project venv."""
+    """Check if we're running inside an isolated Python environment."""
     return hasattr(sys, 'real_prefix') or (
         hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix
-    )
+    ) or (Path(sys.prefix).name == "conda-env")
 
-if not _is_in_venv() and VENV_PYTHON.exists():
+if not _is_in_venv() and CONDA_ENV_PYTHON.exists():
+    print(f"[AUTO] Detected system Python. Re-launching with conda env: {CONDA_ENV_PYTHON}")
+    os.execv(str(CONDA_ENV_PYTHON), [str(CONDA_ENV_PYTHON)] + sys.argv)
+elif not _is_in_venv() and VENV_PYTHON.exists():
     # Re-exec this script with the venv Python
     print(f"[AUTO] Detected system Python. Re-launching with venv: {VENV_PYTHON}")
     os.execv(str(VENV_PYTHON), [str(VENV_PYTHON)] + sys.argv)
